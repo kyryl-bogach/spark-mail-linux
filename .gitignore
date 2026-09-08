@@ -30,3 +30,6 @@ Foundation.original.dll
 # Python bytecode
 __pycache__/
 *.pyc
+
+# Investigation history kept locally: logs, installers, dumps, old backups.
+archive/

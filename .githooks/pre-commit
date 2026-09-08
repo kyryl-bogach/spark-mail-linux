@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+# Refuse to commit runtime state, proprietary binaries or large files.
+#
+# This repository holds the Wine prefix, the extracted app and login state in
+# ignored directories. A mistake in .gitignore must not become a public leak.
+set -euo pipefail
+
+fail=0
+max_bytes=$((1024 * 1024))
+
+blocked_paths='^(app|prefix|test-home|runtime|tmp|archive)/'
+blocked_names='\.(dll|exe|msi|dmp|log|asar|pkg\.tar\.zst|sig|obj|pyc)$|^Foundation\.original\.dll$|^mail-notify\.(state|lock)$'
+
+while IFS= read -r path; do
+  [ -n "$path" ] || continue
+  if printf '%s' "$path" | grep -qE "$blocked_paths"; then
+    echo "pre-commit: refusing runtime or archive path: $path" >&2
+    fail=1
+    continue
+  fi
+  if printf '%s' "$path" | grep -qE "$blocked_names"; then
+    echo "pre-commit: refusing binary or state file: $path" >&2
+    fail=1
+    continue
+  fi
+  if [ -f "$path" ]; then
+    size=$(stat -c %s "$path")
+    if [ "$size" -gt "$max_bytes" ]; then
+      echo "pre-commit: refusing file over 1 MB ($size bytes): $path" >&2
+      fail=1
+    fi
+  fi
+done < <(git diff --cached --name-only --diff-filter=ACMR)
+
+if [ "$fail" -ne 0 ]; then
+  echo "pre-commit: commit blocked. Use 'git commit --no-verify' only if you are certain." >&2
+  exit 1
+fi
