@@ -7,8 +7,8 @@ Spark has no Linux client. This repository holds the three compatibility fixes
 that make the Windows build run correctly, plus a launcher that keeps every
 file inside one directory.
 
-Status: working. Verified with Spark Desktop 3.30.10 (Electron 42.3.3) on
-Wine 11.16, on Arch Linux with Hyprland.
+Status: working. Verified with Spark Desktop 3.30.10 and 3.30.11 (Electron
+42.3.3) on Wine 11.16, on Arch Linux with Hyprland.
 
 Verified features: Google login, inbox sync, calendar, sending mail, file
 attachments, and new-mail notifications.
@@ -35,14 +35,14 @@ records the debugger evidence behind every claim.
 ## Requirements
 
 - Wine 11.16 or later, 64-bit
-- `bubblewrap`, `python3`, `p7zip`, `clang`, `llvm`, `binutils`
+- `bubblewrap`, `python3`, `libarchive` (for `bsdtar`), `clang`, `llvm`, `binutils`
 - `libnotify` for notifications
 - The official Spark Desktop installer for Windows, from sparkmailapp.com
 
 On Arch Linux:
 
 ```bash
-sudo pacman -S wine bubblewrap python p7zip clang llvm binutils libnotify
+sudo pacman -S wine bubblewrap python libarchive clang llvm binutils libnotify
 ```
 
 ## Install
@@ -51,9 +51,10 @@ Run every step from the repository directory. Set `SPARK_ROOT` if you run the
 scripts from somewhere else.
 
 1. Extract the installer. It is an NSIS archive, so no Windows is needed.
+   `bsdtar` from libarchive reads it directly.
 
    ```bash
-   7z x -oapp /path/to/Spark.exe
+   mkdir -p app && bsdtar -xf /path/to/Spark.exe -C app
    ```
 
 2. Build both shims and put them beside the executable.
@@ -167,6 +168,14 @@ timestamped name and backs up the new pristine DLL. Both scripts are safe to
 run twice; they report `Already patched; nothing to do.` and exit zero.
 
 Rebuild the shims only if you also changed Wine or the shim sources.
+
+The in-app updater is not the right path here. It runs an NSIS installer that
+expects a registered install location, and this app directory is an extracted
+archive that was never installed. Download the new installer instead, extract
+it over a fresh `app/`, copy both shims back in, then reapply the patches.
+
+The 3.30.10 to 3.30.11 update needed no new work: `Foundation.dll` was byte
+identical between the two builds, so both shims applied unchanged.
 
 ## Upstream bugs
 
