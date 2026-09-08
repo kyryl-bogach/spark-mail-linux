@@ -136,9 +136,8 @@ git config core.hooksPath .githooks
 
 ## Limits and risks
 
-- A Spark update overwrites the patched `Foundation.dll` and both shims. Repeat
-  steps 1 to 3 after every update. `run-spark.sh` checks that the shims are
-  present and stops early if they are missing.
+- A Spark update overwrites the patched `Foundation.dll`. See "After a Spark
+  update" below. Do not take an in-app update without reapplying the patches.
 - `sprkiphl.dll` hides all network adapters from `SparkCore` only. Mail and
   calendar do not need adapter data, but a future Spark feature might.
 - The notification bridge reads Spark's SQLite database directly. A schema
@@ -148,6 +147,26 @@ git config core.hooksPath .githooks
 - Spark's OAuth client identifiers are read from the installed app. A future
   version can change them. Update `ALLOWED_SCHEMES` in `bin/auth-callback.py`
   and the `MimeType` line in the desktop template if login stops working.
+
+## After a Spark update
+
+An update replaces `Foundation.dll` with a pristine copy. It leaves the shim
+DLLs in place, so the imports point back at Wine's own libraries and the
+startup crash returns.
+
+`run-spark.sh` reads the imports before it starts Wine, so it refuses to launch
+and prints the two commands to run. Reapply the patches:
+
+```bash
+python3 shims/patch-foundation.py
+python3 shims/patch-iphlpapi.py
+```
+
+`patch-foundation.py` keeps the previous `Foundation.original.dll` under a
+timestamped name and backs up the new pristine DLL. Both scripts are safe to
+run twice; they report `Already patched; nothing to do.` and exit zero.
+
+Rebuild the shims only if you also changed Wine or the shim sources.
 
 ## Upstream bugs
 

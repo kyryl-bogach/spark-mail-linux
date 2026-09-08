@@ -40,6 +40,22 @@ for dll in sprkenv.dll sprkiphl.dll; do
   [ -f "$app/$dll" ] || { echo "error: missing $app/$dll. Run shims/build.sh." >&2; exit 1; }
 done
 
+# Checking that the shims exist is not enough. A Spark update replaces
+# Foundation.dll and leaves the shims untouched, so verify the imports really
+# point at them. Without this check the app crashes in an 8 GB memcpy instead.
+foundation=$app/resources/app.asar.unpacked/node_modules/@readdle/sparkcore-win/bin/Release/SparkCore.bundle/Foundation.dll
+if [ -f "$foundation" ]; then
+  for name in sprkenv.dll sprkiphl.dll; do
+    if ! grep -qa "$name" "$foundation"; then
+      echo "error: Foundation.dll does not import $name." >&2
+      echo "A Spark update probably reverted the patches. Reapply them:" >&2
+      echo "  python3 $root/shims/patch-foundation.py" >&2
+      echo "  python3 $root/shims/patch-iphlpapi.py" >&2
+      exit 1
+    fi
+  done
+fi
+
 mkdir -p "$tmp_dir" "$home_overlay"
 
 # Spark's Windows toast notifications do not render under Wine. This watcher

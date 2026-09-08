@@ -26,7 +26,8 @@ if not TARGET.exists():
 data = TARGET.read_bytes()
 count = data.count(OLD)
 if count == 0 and data.count(NEW) == 1:
-    sys.exit('Already patched; nothing to do.')
+    print('Already patched; nothing to do.')
+    raise SystemExit(0)
 if count != 1:
     sys.exit('error: expected exactly one IPHLPAPI import name, found %d' % count)
 
