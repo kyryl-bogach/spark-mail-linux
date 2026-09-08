@@ -121,6 +121,19 @@ docs/investigation.md debugger evidence for every fix
 time. They hold proprietary binaries and your login state, so `.gitignore`
 excludes all of them. Do not commit them.
 
+## Working in this repository
+
+The repository directory doubles as the working directory. `app/`, `prefix/`,
+`test-home/`, `runtime/` and `tmp/` hold proprietary binaries and your login
+state, so `.gitignore` excludes all of them.
+
+Enable the pre-commit hook once per clone. It refuses any staged runtime path,
+binary, state file, or file over 1 MB:
+
+```bash
+git config core.hooksPath .githooks
+```
+
 ## Limits and risks
 
 - A Spark update overwrites the patched `Foundation.dll` and both shims. Repeat
