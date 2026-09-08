@@ -1,0 +1,32 @@
+# Proprietary application files, Wine state, login state and crash data.
+# Never commit any of these.
+app/
+prefix/
+test-home/
+runtime/
+tmp/
+
+# Build output
+*.dll
+*.obj
+*.o
+
+# Local state and logs
+*.log
+*.dmp
+mail-notify.state
+mail-notify.lock
+
+# Installers and downloaded runtimes
+*.exe
+*.msi
+*.pkg.tar.zst
+*.pkg.tar.zst.sig
+
+# Backups
+Foundation.original.dll
+*-backup/
+
+# Python bytecode
+__pycache__/
+*.pyc

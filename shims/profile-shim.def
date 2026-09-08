@@ -1,0 +1,4 @@
+LIBRARY sprkenv.dll
+EXPORTS
+    GetAllUsersProfileDirectoryW
+    GetProfilesDirectoryW=userenv.GetProfilesDirectoryW
