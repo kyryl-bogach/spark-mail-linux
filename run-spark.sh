@@ -61,8 +61,9 @@ mkdir -p "$tmp_dir" "$home_overlay"
 # Spark's Windows toast notifications do not render under Wine. This watcher
 # bridges new mail to notify-send. The trap covers every exit path, including
 # a nonzero wine exit under 'set -e' and an interrupt.
+# Set SPARK_NOTIFY=0 for short-lived invocations such as the Spark CLI.
 watcher=
-if [ -x "$root/bin/mail-notify.py" ] || [ -f "$root/bin/mail-notify.py" ]; then
+if [ "${SPARK_NOTIFY:-1}" != 0 ] && { [ -x "$root/bin/mail-notify.py" ] || [ -f "$root/bin/mail-notify.py" ]; }; then
   SPARK_ROOT=$root python3 "$root/bin/mail-notify.py" &
   watcher=$!
   trap '[ -n "$watcher" ] && kill "$watcher" 2>/dev/null' EXIT

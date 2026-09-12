@@ -1,123 +1,93 @@
 # spark-mail-linux
 
-[Spark Mail](https://sparkmailapp.com/) has no Linux app. This makes the Windows
-one work under Wine.
+## TL;DR
 
-**Status: working.** Tested on Spark Desktop 3.30.10 and 3.30.11, Wine 11.16,
-Arch Linux.
+Run [Spark Mail](https://sparkmailapp.com/) for Windows on Linux with Wine.
+Two small DLL shims prevent known crashes. Scripts handle launch, browser login, and native notifications.
 
-Login, inbox, calendar, sending, attachments and notifications all work.
-
-Spark Desktop 3.30.12.140844 (2026-09-10) also passes a startup check with both
-Wine patches. Mail, calendar, and attachment operations need separate checks on
-this version. See the [official release notes](https://sparkmailapp.com/spark3/win/changelog).
-
-## What it does
-
-Spark almost runs on Wine already. Two Windows APIs that Wine does not finish
-implementing crash it, so two tiny stand-in DLLs answer those calls instead.
-
-```mermaid
-flowchart LR
-  S["Spark"] --> F["Foundation.dll"]
-  F -.->|"crashes on startup"| W1["Wine USERENV"]
-  F -.->|"crashes after login"| W2["Wine IPHLPAPI"]
-  F ==>|"patched to use"| A["sprkenv.dll"]
-  F ==>|"patched to use"| B["sprkiphl.dll"]
-  A --> OK["Spark runs"]
-  B --> OK
-```
-
-Nothing is installed system-wide. Everything lives in this one folder.
+- **Unofficial.** Readdle does not support this project.
+- **Verified:** Spark 3.30.12.140844 starts on Arch Linux with Wine 11.16.
+- **CLI:** The bundled Windows CLI works through [bin/spark](bin/spark). Spark Desktop must remain open.
+- **Updates:** Follow the [update procedure](AGENTS.md#update-spark), not Spark’s update button.
 
 ## Install
 
-You need the official `Spark.exe` from sparkmailapp.com.
+Download the official Windows `Spark.exe` from [Spark](https://sparkmailapp.com/windows).
+Run these commands from the repository root on Arch Linux:
 
 ```bash
 sudo pacman -S wine bubblewrap python libarchive clang llvm binutils libnotify
 
-mkdir -p app && bsdtar -xf /path/to/Spark.exe -C app   # unpack Spark
-OUT_DIR=app ./shims/build.sh                            # build the two DLLs
-python3 shims/patch-foundation.py                       # point Spark at them
-python3 shims/patch-iphlpapi.py
-./install-handler.sh                                    # so Google login works
-./run-spark.sh                                          # go
-```
-
-On Hyprland, hide Wine's stray tray tile:
-
-```bash
-cat share/hyprland-spark-tray.conf >> ~/.config/hypr/hyprland.conf
-```
-
-## How a launch works
-
-```mermaid
-flowchart TD
-  R["run-spark.sh"] --> BW["Bubblewrap: keeps files in this folder"]
-  BW --> WINE["Wine runs Spark"]
-  WINE --> UI["Spark window"]
-  WINE --> DB["Spark's mail database"]
-  DB --> MN["mail-notify.py"]
-  MN --> NOTIF["Native Linux notifications"]
-  LOGIN["Google login in your browser"] --> CB["auth-callback.py"]
-  CB --> WINE
-```
-
-Two things worth knowing:
-
-- Google login opens your real browser, so the callback has to be handed back
-  into Wine. `install-handler.sh` sets that up.
-- Spark's Windows notifications do not render on Wine, so `mail-notify.py`
-  watches Spark's own database and fires native ones instead.
-
-Bubblewrap keeps files contained. It is not a security sandbox: Spark still has
-your network and your display.
-
-## When Spark updates
-
-An update overwrites the patch. The launcher notices and refuses to start
-rather than crashing, and tells you what to run.
-
-```mermaid
-flowchart LR
-  U["Spark updates"] --> P["Patch is gone"]
-  P --> L["run-spark.sh refuses to start"]
-  L --> F["Re-run the two patch scripts"]
-  F --> OK["Working again"]
-```
-
-```bash
+mkdir -p app
+bsdtar -xf /path/to/Spark.exe -C app
+OUT_DIR=app ./shims/build.sh
 python3 shims/patch-foundation.py
 python3 shims/patch-iphlpapi.py
+./install-handler.sh
+./run-spark.sh
 ```
 
-Skip Spark's own update button. Download the new installer, unpack it over a
-fresh `app/`, copy both DLLs back in, then run the two scripts above.
+For later launches, run `./run-spark.sh`.
+The app and Wine state stay in this directory. The login handler registers with your desktop.
 
-## Caveats
+On Hyprland, [this optional window rule](share/hyprland-spark-tray.conf) hides Wine’s stray tray tile.
 
-- Unofficial and unsupported. Readdle has nothing to do with this.
-- Spark sees no network adapters. Mail and calendar do not care.
-- Notifications read Spark's database directly, so a future version could
-  break them. They fail quietly.
-- The file picker is Wine's own. It works, it just looks plain.
+## What works
 
-## Details
+Login, inbox, calendar, mail delivery, attachments, and notifications were tested on Spark 3.30.10 and 3.30.11.
+Version 3.30.12 has passed desktop startup checks. Its mail, calendar, and attachment operations still need separate checks.
 
-`docs/investigation.md` has the full story: the crash dumps, the disassembly,
-and why each fix is the right one. Both crashes are really Wine bugs, and the
-shims only work around them.
+Bubblewrap contains filesystem writes but retains network and display access. It is not a security sandbox.
+Notifications depend on Spark’s database format, which future updates can change. File dialogs use Wine’s interface.
 
-Working on this repo? Run `git config core.hooksPath .githooks` once. This
-folder holds your live mailbox and login state, and the hook stops you
-committing any of it.
+## Spark CLI
 
-## Legal
+Start Spark Desktop and enable account access under **Settings > AI Agents**.
+Then run:
 
-No Spark code and no Microsoft code is in this repository, only original
-scripts. Spark Desktop belongs to Readdle. Get it from them and follow their
-terms. The shims exist so an unmodified app can run on Wine.
+```bash
+./bin/spark --help
+./bin/spark --version
+./bin/spark accounts
+```
 
-MIT licensed. See `LICENSE`.
+CLI 1.3.1 passed checks for help, version, accounts, folders, and emails. Data commands returned live results with read-only access.
+Triage and send operations were not tested. They require a suitable plan and account permissions.
+
+To put `spark` on your PATH, run these commands from the repository root:
+
+```bash
+mkdir -p ~/.local/bin
+ln -s "$PWD/bin/spark" ~/.local/bin/spark
+```
+
+Ensure `~/.local/bin` is on your PATH. The command refuses to replace an existing file.
+The wrapper uses the desktop’s Wine environment and skips the notification watcher.
+See [CLI maintenance](AGENTS.md#spark-cli) for agent skills and update checks.
+
+## Update
+
+Updates replace the patched DLL. The launcher detects missing patches and refuses to start.
+
+Follow [AGENTS.md](AGENTS.md#update-spark) to download, prepare, back up, replace, and verify a new version.
+The procedure includes rollback steps and keeps your existing account state.
+
+## Work on this project
+
+Read [AGENTS.md](AGENTS.md) for the project map, work rules, and maintenance procedures.
+`CLAUDE.md` links to the same file. Both people and coding tools use one set of instructions.
+
+Enable the commit guard:
+
+```bash
+git config core.hooksPath .githooks
+```
+
+Never commit app binaries, mailbox data, credentials, or logs.
+See [the investigation](docs/investigation.md) for the Wine failures and the reasons for each shim.
+
+## License
+
+The project scripts use the [MIT license](LICENSE).
+Spark belongs to Readdle. Download it from them and follow their terms.
+This repository contains no Spark or Microsoft code.
