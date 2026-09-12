@@ -8,6 +8,10 @@ Arch Linux.
 
 Login, inbox, calendar, sending, attachments and notifications all work.
 
+Spark Desktop 3.30.12.140844 (2026-09-10) also passes a startup check with both
+Wine patches. Mail, calendar, and attachment operations need separate checks on
+this version. See the [official release notes](https://sparkmailapp.com/spark3/win/changelog).
+
 ## What it does
 
 Spark almost runs on Wine already. Two Windows APIs that Wine does not finish
