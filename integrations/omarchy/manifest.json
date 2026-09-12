@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "id": "local.spark-mail",
+  "name": "Spark Mail",
+  "version": "1.0.0",
+  "description": "Spark inbox with an action to open the desktop app",
+  "kinds": ["bar-widget"],
+  "entryPoints": {"barWidget": "BarWidget.qml"},
+  "barWidget": {
+    "displayName": "Spark Mail",
+    "description": "Show the Spark inbox",
+    "category": "Info",
+    "allowMultiple": false
+  }
+}

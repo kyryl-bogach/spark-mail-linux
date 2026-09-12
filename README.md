@@ -62,6 +62,9 @@ Ensure `~/.local/bin` is on your PATH. The command refuses to replace an existin
 The wrapper uses the desktop’s Wine environment and skips the notification watcher.
 See [CLI maintenance](AGENTS.md#spark-cli) for agent skills and update checks.
 
+An optional [Omarchy plugin](integrations/omarchy/README.md) shows the unified inbox in the bar.
+Click a row to focus Spark. The plugin does not open the selected email.
+
 ## Update
 
 Updates replace the patched DLL. The launcher detects missing patches and refuses to start.
