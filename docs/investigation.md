@@ -191,3 +191,28 @@ cp Foundation.original.dll \
 
 This removes both import redirects. The shim DLLs then stay on disk, unused.
 To keep only the profile shim, run `shims/patch-foundation.py` again.
+
+## Open observations
+
+These conditions were seen during a 3.30.12 install on Omarchy 4.0.3 with
+Wine 11.17. None has a proven root cause. Treat each as a recorded condition,
+not a diagnosis.
+
+**Partial extraction.** `bsdtar` stopped silently partway through the NSIS
+installer. About 170 files never reached `app/`, including `Spark
+Desktop.exe`, the V8 snapshots, and most of the SparkCore bundle. The later
+errors (`Error loading V8 startup snapshot file`, `Cannot find module
+'@readdle/sparkcore-win'`) pointed nowhere near the real cause. Recovery:
+compare `bsdtar -tf` against the extracted tree, then extract the missing
+entries with `bsdtar -T`. `install.sh` now runs this check on every install.
+
+**GPU process failure.** The first launch failed with `GPU process isn't
+usable. Goodbye.` Adding Electron's `--disable-gpu` argument worked. The same
+version starts with default settings on the reference host, so the condition
+is host-dependent.
+
+**Fatal error with the notification watcher.** One launch with the watcher
+enabled reached `Application is ready` and then died with `FATAL ERROR ...
+spark-js-addon ... CNAPI.swift ... invalid_arg`. Launches with
+`SPARK_NOTIFY=0` stayed up. The watcher is a separate read-only Python
+process, so a causal link is doubtful and unproven. Isolation work is open.

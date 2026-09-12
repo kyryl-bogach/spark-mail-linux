@@ -14,22 +14,15 @@ Two small DLL shims prevent known crashes. Scripts handle launch, browser login,
 
 ## Install
 
-Download the official Windows `Spark.exe` from [Spark](https://sparkmailapp.com/windows).
-Run these commands from the repository root on Arch Linux:
+See [INSTALLATION.md](INSTALLATION.md) for full instructions, verification steps, caveats, and troubleshooting.
+The recommended way to install is to give this repository to a coding agent. The installation document is written for that.
 
-```bash
-sudo pacman -S wine bubblewrap python libarchive clang llvm binutils libnotify
+The short path on Arch Linux:
 
-mkdir -p app
-bsdtar -xf /path/to/Spark.exe -C app
-OUT_DIR=app ./shims/build.sh
-python3 shims/patch-foundation.py
-python3 shims/patch-iphlpapi.py
-./install-handler.sh
-./run-spark.sh
-```
+1. Download the official Windows `Spark.exe`. Confirm the current version and URL on the [release notes](https://sparkmailapp.com/spark3/win/changelog).
+2. Run `./install.sh /path/to/Spark.exe` from the repository root.
+3. Launch with `./run-spark.sh`. Use that command for later launches too.
 
-For later launches, run `./run-spark.sh`.
 The app and Wine state stay in this directory. The login handler registers with your desktop.
 
 On Hyprland, [this optional window rule](share/hyprland-spark-tray.conf) hides Wine’s stray tray tile.

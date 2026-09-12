@@ -15,6 +15,8 @@ Docker does not replace the host display, Wine prefix, or desktop integration in
 | Path | Purpose |
 | --- | --- |
 | `run-spark.sh` | Checks the patches and launches Spark inside Bubblewrap. |
+| `install.sh` | Verifies dependencies and extraction, then builds, patches, and registers. |
+| `INSTALLATION.md` | Agent-facing install guide with user questions, checks, and caveats. |
 | `shims/build.sh` | Builds the two compatibility DLLs with Clang and Wine import libraries. |
 | `shims/patch-foundation.py` | Redirects Foundation's USERENV import to `sprkenv.dll` and saves the original DLL. |
 | `shims/patch-iphlpapi.py` | Redirects Foundation's IPHLPAPI import to `sprkiphl.dll`. |
@@ -116,6 +118,17 @@ SPARK_ROOT="$stage" python3 shims/patch-iphlpapi.py
 
 Keep `root`, `version`, and `stage` for the later steps.
 If any command fails, stop before you replace the live app.
+
+`bsdtar` can stop silently partway through the NSIS installer.
+Compare the archive manifest against the extracted tree before you build the shims:
+
+```bash
+diff <(bsdtar -tf "$stage/Spark.exe" | tr '\\' '/' | sed 's|^\./||' | grep -v '/$' | sort) \
+     <(cd "$stage/app" && find . -mindepth 1 -type f | sed 's|^\./||' | sort)
+```
+
+Extract any missing entries with `bsdtar -xf "$stage/Spark.exe" -C "$stage/app" -T <list>`.
+Never patch a partially extracted tree.
 
 Confirm that the extracted application reports the requested version.
 Confirm that both shim DLLs exist beside `Spark Desktop.exe`.
