@@ -10,6 +10,8 @@ Two small DLL shims prevent known crashes. Scripts handle launch, browser login,
 - **CLI:** The bundled Windows CLI works through [bin/spark](bin/spark). Spark Desktop must remain open.
 - **Updates:** Follow the [update procedure](AGENTS.md#update-spark), not Spark’s update button.
 
+<img src="docs/screenshots/spark-desktop.png" alt="Spark Desktop on Linux with an empty inbox" width="640">
+
 ## Install
 
 Download the official Windows `Spark.exe` from [Spark](https://sparkmailapp.com/windows).
@@ -41,6 +43,8 @@ Bubblewrap contains filesystem writes but retains network and display access. It
 Notifications depend on Spark’s database format, which future updates can change. File dialogs use Wine’s interface.
 
 ## Spark CLI
+
+![Spark CLI command list in a Linux terminal](docs/screenshots/spark-cli.png)
 
 Start Spark Desktop and enable account access under **Settings > AI Agents**.
 Then run:
