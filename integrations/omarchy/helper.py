@@ -34,7 +34,7 @@ def parse_emails(output):
             positions = [line.index(name) for name in headings]
             break
     else:
-        if re.search(r'\b0 total emails\b', output) or output.strip() == 'No emails found.':
+        if re.search(r'\b0 total emails\b', output) or 'No emails found.' in [text.strip() for text in lines]:
             return []
         raise ValueError('Unsupported CLI output')
     rows = []

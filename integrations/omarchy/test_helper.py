@@ -30,6 +30,7 @@ class ParserTests(unittest.TestCase):
             parse_emails(self.table(['oops', '', '', '', '', '']))
 
     def test_empty_inbox(self):
+        self.assertEqual(parse_emails('Emails in Unified Inbox\n\nNo emails found.'), [])
         self.assertEqual(parse_emails('No emails found.'), [])
 
 
