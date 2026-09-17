@@ -125,14 +125,10 @@ Omarchy 4 Lua syntax:
 o.window({ class = "^spark desktop\\.exe$" }, { tile = true })
 ```
 
-The tray tile is a separate Wine helper window. Copy the matching rule into the
-user's Hyprland configuration:
-
-- Hyprland 0.55 and later / Omarchy 4: `share/hyprland-spark-tray.lua`
-- Hyprland 0.54 and earlier: `share/hyprland-spark-tray.conf`
-
-For Omarchy, append the Lua rule to `~/.config/hypr/hyprland.lua`, then run
-`hyprctl reload` and `hyprctl configerrors`.
+After Spark's renderer is ready, the launcher closes only the `explorer.exe
+/desktop` process from Spark's Wine prefix. That helper otherwise renders the
+tray icon as a separate floating window. No tray-specific Hyprland rule is
+needed.
 
 **Omarchy keybinding.** Omarchy binds `SUPER+SHIFT+E` by default. Unbind it
 before reuse. Example for `~/.config/hypr/bindings.lua`:
