@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Forward a Spark OAuth callback URL from the host into the running app.
+"""Forward a Spark callback or deep-link URL into the running app.
 
-Google sign-in opens the host browser, so the host must own the callback URL
-schemes. This handler validates the scheme, then re-runs run-spark.sh with
+Browser sign-in and Spark links use custom schemes, so the host must own them.
+This handler validates the scheme, then re-runs run-spark.sh with
 --win-open-url.
 
 Running the full launcher again is deliberate. The callback needs the same
@@ -27,7 +27,15 @@ ROOT = os.environ.get('SPARK_ROOT') or os.path.dirname(
 ALLOWED_SCHEMES = {
     'com.googleusercontent.apps.681834923750-3p9205dgnfbq0s196910u38tmn61ehc2',
     'com.readdle.spark.auth-bridge.desktop-dist',
+    'com.readdle.spark.utm.email.desktop',
+    'hotmail.com.readdle.smartmail.desktop',
+    'msauth.com.readdle.smartmail.desktop',
     'oauth.redirect.com.readdle.smartmail',
+    'readdle-spark',
+    'readdlespark',
+    'spark-mail-url',
+    'stripe.com.readdle.spark',
+    'yahoo.com.readdle.smartmail.desktop',
 }
 
 

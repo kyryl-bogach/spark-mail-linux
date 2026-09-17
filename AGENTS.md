@@ -20,11 +20,12 @@ Docker does not replace the host display, Wine prefix, or desktop integration in
 | `shims/build.sh` | Builds the two compatibility DLLs with Clang and Wine import libraries. |
 | `shims/patch-foundation.py` | Redirects Foundation's USERENV import to `sprkenv.dll` and saves the original DLL. |
 | `shims/patch-iphlpapi.py` | Redirects Foundation's IPHLPAPI import to `sprkiphl.dll`. |
-| `bin/auth-callback.py` | Validates OAuth schemes and forwards callbacks through the launcher. |
+| `bin/auth-callback.py` | Validates Spark URL schemes and forwards them through the launcher. |
 | `bin/mail-notify.py` | Reads Spark's database and emits native notifications. |
 | `bin/spark` | Runs the bundled Windows CLI through the desktop launcher. |
-| `install-handler.sh` | Registers the callback handler with the host desktop. |
+| `install-handler.sh` | Registers the app launcher and URL handler with the host desktop. |
 | `share/` | Contains desktop integration templates. |
+| `tests/` | Covers desktop registration, OAuth validation, and notification polling. |
 | `docs/investigation.md` | Records the Wine failures and the evidence for each workaround. |
 | `.githooks/pre-commit` | Blocks runtime state, proprietary binaries, and large files from commits. |
 

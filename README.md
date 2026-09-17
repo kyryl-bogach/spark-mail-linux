@@ -6,7 +6,7 @@ Run [Spark Mail](https://sparkmailapp.com/) for Windows on Linux with Wine.
 Two small DLL shims prevent known crashes. Scripts handle launch, browser login, and native notifications.
 
 - **Unofficial.** Readdle does not support this project.
-- **Verified:** Spark 3.30.12.140844 starts on Arch Linux with Wine 11.16.
+- **Verified:** Spark 3.30.12.140844 starts on Arch Linux with Wine 11.16 and 11.17.
 - **CLI:** The bundled Windows CLI works through [bin/spark](bin/spark). Spark Desktop must remain open.
 - **Updates:** Follow the [update procedure](AGENTS.md#update-spark), not Spark’s update button.
 
@@ -23,7 +23,8 @@ The short path on Arch Linux:
 2. Run `./install.sh /path/to/Spark.exe` from the repository root.
 3. Launch with `./run-spark.sh`. Use that command for later launches too.
 
-The app and Wine state stay in this directory. The login handler registers with your desktop.
+The app and Wine state stay in this directory. The installer adds a normal
+application launcher and registers Spark's URL handler with your desktop.
 
 On Hyprland, [this optional window rule](share/hyprland-spark-tray.conf) hides Wine’s stray tray tile.
 

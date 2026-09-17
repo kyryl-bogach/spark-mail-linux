@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=Spark Mail
+Comment=Smart email client
+Exec="@SPARK_ROOT@/run-spark.sh"
+Path=@SPARK_ROOT@
+Icon=mail-unread
+Terminal=false
+StartupNotify=true
+StartupWMClass=spark desktop.exe
+Categories=Network;Email;
+Keywords=email;mail;spark;

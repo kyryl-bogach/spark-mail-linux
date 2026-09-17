@@ -123,10 +123,13 @@ Spark is an Electron app. At launch it registers its URL schemes in the Wine
 prefix under `HKCU`. Each entry points at `"Spark Desktop.exe" --win-open-url
 "%1"`.
 
-Google sign-in opens the host browser, so the host needs
-`x-scheme-handler` entries for the three callback schemes Spark registers. The
-desktop template in `share/` provides them, and `auth-callback.py` validates
-the scheme against an allowlist before it acts.
+Browser sign-in and deep links need matching host `x-scheme-handler` entries
+for every custom scheme Spark registers. Spark 3.30.12 logged eleven schemes
+covering Google, Microsoft, Yahoo, Stripe, campaign links, and Spark's own deep
+links. The desktop template in `share/` registers the complete observed set,
+`install-handler.sh` makes the hidden handler the default for each
+Spark-specific scheme, and `auth-callback.py` validates the same allowlist
+before it acts.
 
 The important fix was in the launcher, not the handler. The launcher used
 `--tmpfs /tmp`. A callback invocation therefore got a fresh wineserver socket

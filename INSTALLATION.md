@@ -77,7 +77,9 @@ Check every item. A live process alone does not prove a successful startup.
 3. Patches: `objdump -p` on `Foundation.dll` lists imports from `sprkenv.dll`
    and `sprkiphl.dll`. Its path relative to `app/` is
    `resources/app.asar.unpacked/node_modules/@readdle/sparkcore-win/bin/Release/SparkCore.bundle/Foundation.dll`.
-4. Handler: `~/.local/share/applications/spark-mail-linux-auth.desktop` exists.
+4. Desktop integration: `~/.local/share/applications/spark-mail-linux.desktop`
+   and `spark-mail-linux-auth.desktop` exist. The first is the visible app
+   launcher; the second handles browser sign-in callbacks and Spark deep links.
 5. First launch: run `./run-spark.sh`. Confirm a visible, mapped window.
    On Hyprland, `hyprctl clients` must list the Spark window.
 
@@ -173,7 +175,7 @@ sanitized log.
 
 **Everything lives in the repository.** The app, the Wine prefix, and the
 home overlay stay in the project directory. The only system-wide changes are
-the desktop handler entry and any symlink the user approved.
+the desktop launcher and handler entries plus any symlink the user approved.
 
 ## 8. Update Spark later
 
