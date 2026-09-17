@@ -16,4 +16,5 @@ export SPARK_ROOT=$root
 app=$(readlink -f "${SPARK_APP:-$root/app}")
 export SPARK_EXE=$app/resources/app.asar.unpacked/node_modules/@readdle/sparkcore-win/bin/Release/SparkCore.bundle/spark.exe
 export SPARK_NOTIFY=0
+export SPARK_CLOSE_TRAY=0
 exec "$root/run-spark.sh" "$@"

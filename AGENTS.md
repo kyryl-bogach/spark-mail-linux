@@ -58,7 +58,8 @@ Spark Desktop must run, and Settings > AI Agents must permit access to the selec
 
 `bin/spark` resolves its real path, so a symlink in `~/.local/bin` can point to it.
 It sets `SPARK_EXE` and reuses the launcher's prefix, runtime, DLL overrides, and Bubblewrap mounts.
-It sets `SPARK_NOTIFY=0` so short CLI calls do not start a notification watcher.
+It sets `SPARK_NOTIFY=0` and `SPARK_CLOSE_TRAY=0` so short CLI calls do not
+start desktop-only background helpers.
 
 Preserve that guard when you change the launcher.
 Do not run the CLI through a separate prefix or bypass the Foundation checks.

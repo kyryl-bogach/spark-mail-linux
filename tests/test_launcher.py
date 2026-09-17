@@ -119,6 +119,42 @@ class LauncherTests(unittest.TestCase):
 
             self.assertEqual(result.returncode, 0, result.stderr)
 
+    def test_cli_disables_desktop_background_helpers(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = self.make_root(temporary)
+            (root / 'bin').mkdir()
+            (root / 'bin' / 'spark').write_bytes(
+                (ROOT / 'bin' / 'spark').read_bytes())
+            (root / 'bin' / 'spark').chmod(0o755)
+            (root / 'run-spark.sh').write_bytes(
+                (ROOT / 'run-spark.sh').read_bytes())
+            (root / 'run-spark.sh').chmod(0o755)
+
+            spark_cli = (root / 'app' / 'resources' / 'app.asar.unpacked' /
+                         'node_modules' / '@readdle' / 'sparkcore-win' / 'bin' /
+                         'Release' / 'SparkCore.bundle' / 'spark.exe')
+            spark_cli.parent.mkdir(parents=True, exist_ok=True)
+            spark_cli.touch()
+
+            fake_wine = root / 'fake-wine'
+            result_file = root / 'wine-environment'
+            fake_wine.write_text(
+                '#!/bin/sh\nprintf "%s\\n%s\\n" "$SPARK_NOTIFY" '
+                '"$SPARK_CLOSE_TRAY" > "$RESULT_FILE"\n')
+            fake_wine.chmod(0o755)
+            environment = dict(
+                os.environ,
+                RESULT_FILE=str(result_file),
+                SPARK_CONTAINER='0',
+                SPARK_WINE=str(fake_wine),
+            )
+
+            subprocess.run(
+                [root / 'bin' / 'spark', '--version'], env=environment,
+                check=True, capture_output=True, text=True)
+
+            self.assertEqual(result_file.read_text().splitlines(), ['0', '0'])
+
 
 if __name__ == '__main__':
     unittest.main()
