@@ -144,6 +144,21 @@ receives the URL in the primary process.
 Result: Google consent completed in the host browser, the callback reached
 Spark, and login and onboarding succeeded.
 
+## PowerShell hardware probes
+
+Spark's system-information dependency launches several PowerShell commands for
+disk, display, processor, BIOS, and other diagnostic hardware metadata when a
+PowerShell executable is available. A reused Wine prefix with PowerShell 7
+installed spawned one `pwsh.exe` per probe. Each process failed with exception
+`0xe0434352` and opened a Wine `Program Error` dialog, producing 17 dialogs in
+one observed launch. Spark itself still reached its ready state.
+
+Adding both `powershell.exe` and `pwsh.exe` to the disabled DLL overrides
+prevented the probes from starting. The repeated exceptions and debugger
+windows fell to zero while Spark and SparkCore still reached ready. The
+launcher therefore disables both executable names by default. This removes
+optional hardware metadata; it does not disable a Spark mail feature.
+
 ## Tray tile and notifications
 
 Spark registers a tray icon. The log shows `fixme:systray:Shell_NotifyIconGetRect`

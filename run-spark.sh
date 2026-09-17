@@ -79,7 +79,7 @@ bwrap \
   --bind "$tmp_dir" /tmp \
   --ro-bind /tmp/.X11-unix /tmp/.X11-unix \
   --setenv WINEPREFIX "$prefix" \
-  --setenv WINEDLLOVERRIDES "${SPARK_OVERRIDES:-winemenubuilder.exe=d;mscoree=d;mshtml=d;ucrtbase,concrt140,msvcp140,msvcp140_1,msvcp140_2,msvcp140_atomic_wait,msvcp140_codecvt_ids,vcamp140,vccorlib140,vcomp140,vcruntime140,vcruntime140_1,vcruntime140_threads=n,b}" \
+  --setenv WINEDLLOVERRIDES "${SPARK_OVERRIDES:-winemenubuilder.exe=d;powershell.exe,pwsh.exe=d;mscoree=d;mshtml=d;ucrtbase,concrt140,msvcp140,msvcp140_1,msvcp140_2,msvcp140_atomic_wait,msvcp140_codecvt_ids,vcamp140,vccorlib140,vcomp140,vcruntime140,vcruntime140_1,vcruntime140_threads=n,b}" \
   --setenv WINEDEBUG "${SPARK_DEBUG:--all}" \
   --chdir "$app" \
   "$wine" "$exe" "$@" || status=$?

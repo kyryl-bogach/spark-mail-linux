@@ -35,6 +35,8 @@ Version 3.30.12 has passed desktop startup checks. Its mail, calendar, and attac
 
 Bubblewrap contains filesystem writes but retains network and display access. It is not a security sandbox.
 Notifications depend on Spark’s database format, which future updates can change. File dialogs use Wine’s interface.
+The launcher disables optional PowerShell hardware probes. A PowerShell installation in a reused Wine prefix can
+otherwise open many Wine debugger dialogs; Spark continues without that diagnostic hardware metadata.
 
 ## Spark CLI
 

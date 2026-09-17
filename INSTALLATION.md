@@ -171,6 +171,14 @@ unproven. The watcher is a separate read-only Python process and cannot write
 to the app. If the crash reproduces, run with `SPARK_NOTIFY=0` and keep a
 sanitized log.
 
+**PowerShell debugger dialogs.** Spark runs optional hardware probes through
+PowerShell when it finds one in the Wine prefix. PowerShell 7 under Wine can
+fail every probe and open many `winedbg` dialogs while Spark itself continues.
+The default DLL overrides disable `powershell.exe` and `pwsh.exe`; Spark then
+continues without that diagnostic hardware metadata. A custom
+`SPARK_OVERRIDES` value must preserve those entries unless the prefix has a
+verified working PowerShell installation.
+
 **Floating window in Hyprland.** See the tiling rule in step 6.
 
 **Everything lives in the repository.** The app, the Wine prefix, and the
