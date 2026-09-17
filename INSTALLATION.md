@@ -182,6 +182,13 @@ continues without that diagnostic hardware metadata. A custom
 `SPARK_OVERRIDES` value must preserve those entries unless the prefix has a
 verified working PowerShell installation.
 
+**A browser still opens another mail client.** Chromium-based browsers can
+keep a site-level `mailto:` handler that takes priority before Linux receives
+the link. Confirm that `xdg-mime query default x-scheme-handler/mailto` returns
+`spark-mail-linux-auth.desktop`, then remove the old mail handler under the
+browser's protocol-handler settings. The installer deliberately does not edit
+browser profiles.
+
 **Floating window in Hyprland.** See the tiling rule in step 6.
 
 **Everything lives in the repository.** The app, the Wine prefix, and the
