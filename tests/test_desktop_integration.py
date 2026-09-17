@@ -38,6 +38,7 @@ class DesktopIntegrationTests(unittest.TestCase):
         }
         self.assertEqual(module.ALLOWED_SCHEMES, registered)
         self.assertIn('hotmail.com.readdle.smartmail.desktop', registered)
+        self.assertIn('mailto', registered)
         self.assertIn('msauth.com.readdle.smartmail.desktop', registered)
         self.assertIn('yahoo.com.readdle.smartmail.desktop', registered)
         self.assertIn('spark-mail-url', registered)
@@ -70,11 +71,14 @@ class DesktopIntegrationTests(unittest.TestCase):
             self.assertEqual(launcher['StartupWMClass'], 'spark desktop.exe')
             self.assertEqual(handler['NoDisplay'], 'true')
             calls = mime_calls.read_text().splitlines()
-            self.assertEqual(len(calls), 11)
+            self.assertEqual(len(calls), 12)
             self.assertTrue(all(
                 call.startswith('default spark-mail-linux-auth.desktop '
                                 'x-scheme-handler/')
                 for call in calls))
+            self.assertIn(
+                'default spark-mail-linux-auth.desktop x-scheme-handler/mailto',
+                calls)
 
     def test_callback_logs_only_scheme_and_forwards_through_launcher(self):
         module = auth_callback_module()
@@ -101,6 +105,23 @@ class DesktopIntegrationTests(unittest.TestCase):
             with self.assertRaises(SystemExit):
                 module.main()
         run.assert_not_called()
+
+    def test_mailto_forwards_without_shell_interpretation(self):
+        module = auth_callback_module()
+        mailto_url = 'mailto:?subject=Linux%20test&body=one%26two'
+        completed = subprocess.CompletedProcess([], 0)
+        with tempfile.TemporaryDirectory() as root:
+            module.ROOT = root
+            with mock.patch.object(sys, 'argv', ['auth-callback.py', mailto_url]), \
+                    mock.patch.object(module.subprocess, 'run', return_value=completed) as run:
+                with self.assertRaises(SystemExit) as exit_result:
+                    module.main()
+
+            self.assertEqual(exit_result.exception.code, 0)
+            command = run.call_args.args[0]
+            self.assertEqual(command[-2:], ['--win-open-url', mailto_url])
+            log = (Path(root) / 'auth-callback.log').read_text()
+            self.assertNotIn('subject', log)
 
 
 if __name__ == '__main__':

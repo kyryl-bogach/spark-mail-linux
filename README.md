@@ -24,7 +24,8 @@ The short path on Arch Linux:
 3. Launch with `./run-spark.sh`. Use that command for later launches too.
 
 The app and Wine state stay in this directory. The installer adds a normal
-application launcher and registers Spark's URL handler with your desktop.
+application launcher and registers Spark for browser callbacks, deep links,
+and `mailto:` links with your desktop.
 
 After Spark's renderer is ready, the launcher closes Wine's `explorer.exe`
 desktop helper so the tray icon does not remain as a small standalone window.

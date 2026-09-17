@@ -79,7 +79,8 @@ Check every item. A live process alone does not prove a successful startup.
    `resources/app.asar.unpacked/node_modules/@readdle/sparkcore-win/bin/Release/SparkCore.bundle/Foundation.dll`.
 4. Desktop integration: `~/.local/share/applications/spark-mail-linux.desktop`
    and `spark-mail-linux-auth.desktop` exist. The first is the visible app
-   launcher; the second handles browser sign-in callbacks and Spark deep links.
+   launcher; the second handles browser sign-in callbacks, Spark deep links,
+   and `mailto:` links.
 5. First launch: run `./run-spark.sh`. Confirm a visible, mapped window.
    On Hyprland, `hyprctl clients` must list the Spark window.
 

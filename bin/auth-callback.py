@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Forward a Spark callback or deep-link URL into the running app.
+"""Forward a Spark callback, deep link, or mailto URL into the running app.
 
 Browser sign-in and Spark links use custom schemes, so the host must own them.
 This handler validates the scheme, then re-runs run-spark.sh with
@@ -29,6 +29,7 @@ ALLOWED_SCHEMES = {
     'com.readdle.spark.auth-bridge.desktop-dist',
     'com.readdle.spark.utm.email.desktop',
     'hotmail.com.readdle.smartmail.desktop',
+    'mailto',
     'msauth.com.readdle.smartmail.desktop',
     'oauth.redirect.com.readdle.smartmail',
     'readdle-spark',

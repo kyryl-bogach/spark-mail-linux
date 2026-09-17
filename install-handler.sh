@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Register Spark's launcher and URL handler with the host desktop.
+# Register Spark's launcher, URL schemes, and mailto handler with the desktop.
 #
 # Browser sign-in and Spark links use custom schemes. Without this handler the
 # callback or deep-link URL has nowhere to go.
