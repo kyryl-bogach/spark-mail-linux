@@ -50,11 +50,37 @@ class LauncherTests(unittest.TestCase):
             overrides = values[override_index + 1]
             self.assertIn('powershell.exe,pwsh.exe=d', overrides)
 
+    def test_direct_wine_fallback_keeps_launcher_environment(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = self.make_root(temporary)
+            fake_wine = root / 'fake-wine'
+            result_file = root / 'wine-environment'
+            fake_wine.write_text(
+                '#!/bin/sh\nprintf "%s\\n%s\\n" "$WINEPREFIX" '
+                '"$WINEDLLOVERRIDES" > "$RESULT_FILE"\n')
+            fake_wine.chmod(0o755)
+            environment = dict(
+                os.environ,
+                RESULT_FILE=str(result_file),
+                SPARK_CONTAINER='0',
+                SPARK_NOTIFY='0',
+                SPARK_ROOT=str(root),
+                SPARK_WINE=str(fake_wine),
+            )
+
+            subprocess.run(
+                [ROOT / 'run-spark.sh'], env=environment,
+                check=True, capture_output=True, text=True)
+
+            values = result_file.read_text().splitlines()
+            self.assertEqual(values[0], str(root / 'prefix'))
+            self.assertIn('powershell.exe,pwsh.exe=d', values[1])
+
     def test_launcher_rejects_an_unpatched_foundation(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = self.make_root(temporary)
             foundation = next(root.glob('app/**/Foundation.dll'))
-            foundation.write_bytes(b'unpatched')
+            foundation.write_bytes(b'USERENV.dll\0IPHLPAPI.DLL\0')
             environment = dict(
                 os.environ,
                 SPARK_NOTIFY='0',
@@ -67,7 +93,31 @@ class LauncherTests(unittest.TestCase):
                 capture_output=True, text=True)
 
             self.assertNotEqual(result.returncode, 0)
-            self.assertIn('Foundation.dll does not import', result.stderr)
+            self.assertIn('Foundation.dll still imports', result.stderr)
+
+    def test_launcher_accepts_an_older_foundation_without_userenv(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = self.make_root(temporary)
+            foundation = next(root.glob('app/**/Foundation.dll'))
+            foundation.write_bytes(b'IPHLPAPI.DLL\0')
+            environment = dict(
+                os.environ,
+                PATH=f'{root / "fake-bin"}:{os.environ["PATH"]}',
+                SPARK_NOTIFY='0',
+                SPARK_ROOT=str(root),
+                SPARK_WINE='/bin/true',
+            )
+            fake_bin = root / 'fake-bin'
+            fake_bin.mkdir()
+            bwrap = fake_bin / 'bwrap'
+            bwrap.write_text('#!/bin/sh\nexit 0\n')
+            bwrap.chmod(0o755)
+
+            result = subprocess.run(
+                [ROOT / 'run-spark.sh'], env=environment,
+                capture_output=True, text=True)
+
+            self.assertEqual(result.returncode, 0, result.stderr)
 
 
 if __name__ == '__main__':

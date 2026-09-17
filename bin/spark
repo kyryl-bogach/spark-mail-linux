@@ -7,7 +7,13 @@ set -euo pipefail
 
 self=$(readlink -f "${BASH_SOURCE[0]}")
 root=$(cd "$(dirname "$self")/.." && pwd)
+config=${SPARK_CONFIG:-$root/spark.local.env}
+if [ -f "$config" ]; then
+  # shellcheck source=/dev/null
+  source "$config"
+fi
 export SPARK_ROOT=$root
-export SPARK_EXE=$root/app/resources/app.asar.unpacked/node_modules/@readdle/sparkcore-win/bin/Release/SparkCore.bundle/spark.exe
+app=$(readlink -f "${SPARK_APP:-$root/app}")
+export SPARK_EXE=$app/resources/app.asar.unpacked/node_modules/@readdle/sparkcore-win/bin/Release/SparkCore.bundle/spark.exe
 export SPARK_NOTIFY=0
 exec "$root/run-spark.sh" "$@"

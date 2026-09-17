@@ -19,6 +19,7 @@ import time
 
 ROOT = os.environ.get('SPARK_ROOT') or os.path.dirname(
     os.path.dirname(os.path.abspath(__file__)))
+PREFIX = os.environ.get('SPARK_PREFIX') or os.path.join(ROOT, 'prefix')
 STATE = os.path.join(ROOT, 'mail-notify.state')
 LOCK = os.path.join(ROOT, 'mail-notify.lock')
 POLL_SECONDS = int(os.environ.get('SPARK_POLL_SECONDS', '15'))
@@ -26,8 +27,8 @@ POLL_SECONDS = int(os.environ.get('SPARK_POLL_SECONDS', '15'))
 # Spark stores the database under the Wine user's AppData. The prefix user name
 # follows the host user, so find it instead of hard-coding a name.
 DB_GLOB = os.path.join(
-    ROOT, 'prefix/drive_c/users/*/AppData/Local/Spark Desktop'
-          '/core-data/databases/messages.sqlite')
+    PREFIX, 'drive_c/users/*/AppData/Local/Spark Desktop'
+            '/core-data/databases/messages.sqlite')
 
 MATCH = 'unseen = 1 AND inInbox = 1 AND inSent = 0'
 NEW_ROWS = ('SELECT pk, messageFromMailbox, subject FROM messages '

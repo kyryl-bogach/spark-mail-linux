@@ -34,6 +34,9 @@ Login, inbox, calendar, mail delivery, attachments, and notifications were teste
 Version 3.30.12 has passed desktop startup checks. Its mail, calendar, and attachment operations still need separate checks.
 
 Bubblewrap contains filesystem writes but retains network and display access. It is not a security sandbox.
+If an existing Wine installation only starts with its original home and temporary directories, create an ignored
+`spark.local.env` containing `SPARK_CONTAINER=0`. The launcher also accepts `SPARK_APP` and `SPARK_PREFIX` there,
+so an existing installation can be adopted without copying its non-relocatable Wine prefix.
 Notifications depend on Spark’s database format, which future updates can change. File dialogs use Wine’s interface.
 The launcher disables optional PowerShell hardware probes. A PowerShell installation in a reused Wine prefix can
 otherwise open many Wine debugger dialogs; Spark continues without that diagnostic hardware metadata.
