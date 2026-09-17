@@ -18,7 +18,7 @@ def spark_running():
             if not any(arg.lower().endswith(b'spark desktop.exe') for arg in command):
                 continue
             environment = (path.parent / 'environ').read_bytes().split(b'\0')
-            if os.fsencode('WINEPREFIX=' + str(ROOT / 'prefix')) in environment:
+            if os.fsencode('SPARK_ROOT=' + str(ROOT)) in environment:
                 return True
         except (OSError, PermissionError):
             continue
@@ -41,7 +41,7 @@ def parse_emails(output):
     for line in lines[index + 1:]:
         if not line.strip():
             continue
-        if re.fullmatch(r'Page \d+ of \d+ \(\d+ total emails\)', line.strip()):
+        if re.fullmatch(r'Page \d+ of \d+\+? \(\d+\+? total emails\)', line.strip()):
             continue
         fields = [line[start:end].strip() for start, end in zip(positions, positions[1:] + [len(line)])]
         if not fields[0].isdigit():
@@ -50,10 +50,12 @@ def parse_emails(output):
     return rows
 
 
-def inbox():
-    if not spark_running():
-        return {'status': 'Spark is closed', 'emails': []}
-    process = subprocess.Popen([str(ROOT / 'bin/spark'), 'emails'], stdout=subprocess.PIPE,
+def no_accounts(output):
+    return 'No accounts found.' in [line.strip() for line in output.splitlines()]
+
+
+def run_cli(*arguments):
+    process = subprocess.Popen([str(ROOT / 'bin/spark'), *arguments], stdout=subprocess.PIPE,
                                stderr=subprocess.DEVNULL, text=True, start_new_session=True)
     try:
         output, _ = process.communicate(timeout=20)
@@ -64,11 +66,38 @@ def inbox():
         except subprocess.TimeoutExpired:
             os.killpg(process.pid, signal.SIGKILL)
             process.communicate()
-        return {'status': 'Spark did not respond', 'emails': []}
+        return 'timeout', ''
     if process.returncode:
+        return 'error', ''
+    return 'ok', output
+
+
+def inbox():
+    if not spark_running():
+        return {'status': 'Spark is closed', 'emails': []}
+    status, output = run_cli('emails')
+    if status == 'timeout':
+        return {'status': 'Spark did not respond', 'emails': []}
+    if status == 'error':
         return {'status': 'CLI unavailable. Check Spark CLI access in Settings.', 'emails': []}
     rows = parse_emails(output)
+    if not rows:
+        account_status, account_output = run_cli('accounts')
+        if account_status == 'ok' and no_accounts(account_output):
+            return {'status': 'No accounts shared. Enable one in Spark AI Agents.', 'emails': []}
     return {'status': 'Inbox' if rows else 'Inbox is empty', 'emails': rows}
+
+
+def focus_window(address):
+    """Focus an address on current Hyprland, with pre-0.55 compatibility."""
+    if not re.fullmatch(r'0x[0-9a-fA-F]+', address):
+        raise ValueError('Unsupported Hyprland window address')
+    options = {'stdout': subprocess.DEVNULL, 'stderr': subprocess.DEVNULL, 'timeout': 5}
+    lua = f'hl.dsp.focus({{ window = "address:{address}" }})'
+    process = subprocess.run(['hyprctl', 'dispatch', lua], **options)
+    if process.returncode:
+        subprocess.run(['hyprctl', 'dispatch', 'focuswindow', 'address:' + address],
+                       check=True, **options)
 
 
 def open_spark():
@@ -80,10 +109,9 @@ def open_spark():
             environment = Path('/proc', str(client['pid']), 'environ').read_bytes().split(b'\0')
         except OSError:
             continue
-        if os.fsencode('WINEPREFIX=' + str(ROOT / 'prefix')) not in environment:
+        if os.fsencode('SPARK_ROOT=' + str(ROOT)) not in environment:
             continue
-        subprocess.run(['hyprctl', 'dispatch', 'focuswindow', 'address:' + client['address']],
-                       check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=5)
+        focus_window(client['address'])
         return
     subprocess.Popen([str(ROOT / 'run-spark.sh')], stdin=subprocess.DEVNULL,
                      stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
