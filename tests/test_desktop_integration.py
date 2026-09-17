@@ -28,6 +28,17 @@ def auth_callback_module():
 
 
 class DesktopIntegrationTests(unittest.TestCase):
+    def test_current_hyprland_rule_hides_only_the_wine_tray_helper(self):
+        rule = (ROOT / 'share' / 'hyprland-spark-tray.lua').read_text()
+
+        self.assertIn('class = "^explorer[.]exe$"', rule)
+        self.assertIn('title = "^$"', rule)
+        self.assertIn('xwayland = true', rule)
+        self.assertIn('float = true', rule)
+        self.assertIn('workspace = "special:spark-tray silent"', rule)
+        self.assertIn('no_initial_focus = true', rule)
+        self.assertNotIn('spark desktop.exe$', rule)
+
     def test_callback_allowlist_matches_registered_schemes(self):
         module = auth_callback_module()
 

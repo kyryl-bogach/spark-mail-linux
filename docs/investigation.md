@@ -164,8 +164,9 @@ optional hardware metadata; it does not disable a Spark mail feature.
 Spark registers a tray icon. The log shows `fixme:systray:Shell_NotifyIconGetRect`
 stubs. With no `StatusNotifierWatcher` on the session bus, Wine's
 `explorer.exe` draws the icon as a small floating tile. That window has class
-`explorer.exe` and an empty title. The Hyprland rule in `share/` sends it to a
-hidden workspace and denies it initial focus.
+`explorer.exe` and an empty title. The Hyprland rules in `share/` send it to a
+hidden workspace and deny it focus. Separate rules cover the current Lua
+configuration and the legacy Hyprland syntax.
 
 Spark's new-mail notifications use Windows toasts, which Wine stubs out. Mail
 events arrive, and the push pipeline is visible in the log, but nothing

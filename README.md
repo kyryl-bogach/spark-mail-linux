@@ -26,7 +26,9 @@ The short path on Arch Linux:
 The app and Wine state stay in this directory. The installer adds a normal
 application launcher and registers Spark's URL handler with your desktop.
 
-On Hyprland, [this optional window rule](share/hyprland-spark-tray.conf) hides Wine’s stray tray tile.
+On Hyprland, use the optional tray-tile rule for
+[current Lua configurations](share/hyprland-spark-tray.lua) or
+[legacy configurations](share/hyprland-spark-tray.conf).
 
 ## What works
 
