@@ -6,7 +6,7 @@ Run [Spark Mail](https://sparkmailapp.com/) for Windows on Linux with Wine.
 Two small DLL shims prevent known crashes. Scripts handle launch, browser login, and native notifications.
 
 - **Unofficial.** Readdle does not support this project.
-- **Verified:** Spark 3.30.12.140844 starts on Arch Linux with Wine 11.16.
+- **Verified:** Spark 3.31.0.140987 starts on Arch Linux with Wine 11.16.
 - **CLI:** The bundled Windows CLI works through [bin/spark](bin/spark). Spark Desktop must remain open.
 - **Updates:** Follow the [update procedure](AGENTS.md#update-spark), not Spark’s update button.
 
@@ -31,6 +31,7 @@ On Hyprland, [this optional window rule](share/hyprland-spark-tray.conf) hides W
 
 Login, inbox, calendar, mail delivery, attachments, and notifications were tested on Spark 3.30.10 and 3.30.11.
 Version 3.30.12 has passed desktop startup checks. Its mail, calendar, and attachment operations still need separate checks.
+Version 3.31.0 has passed desktop startup checks and a read-only CLI check. Its mail, calendar, and attachment operations still need separate checks.
 
 Bubblewrap contains filesystem writes but retains network and display access. It is not a security sandbox.
 Notifications depend on Spark’s database format, which future updates can change. File dialogs use Wine’s interface.
