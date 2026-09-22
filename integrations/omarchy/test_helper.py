@@ -1,6 +1,7 @@
 """Use synthetic email data to check the CLI boundary."""
 import unittest
-from helper import parse_emails
+from unittest import mock
+from helper import focus_window, no_accounts, parse_emails
 
 
 class ParserTests(unittest.TestCase):
@@ -32,6 +33,38 @@ class ParserTests(unittest.TestCase):
     def test_empty_inbox(self):
         self.assertEqual(parse_emails('Emails in Unified Inbox\n\nNo emails found.'), [])
         self.assertEqual(parse_emails('No emails found.'), [])
+
+    def test_capped_pagination_totals(self):
+        output = self.table(['42', 'a@example.test', 'Test Sender',
+                             '2026-09-12 10:00', 'Subject', 'unread'])
+        output = output.replace('Page 1 of 1 (1 total emails)',
+                                'Page 1 of 20+ (1000+ total emails)')
+        self.assertEqual(len(parse_emails(output)), 1)
+
+    def test_no_accounts_is_distinct_from_an_empty_inbox(self):
+        self.assertTrue(no_accounts('No accounts found.\r\n'))
+        self.assertFalse(no_accounts('No emails found.\r\n'))
+
+    @mock.patch('helper.subprocess.run')
+    def test_focus_uses_current_hyprland_dispatcher(self, run):
+        run.return_value.returncode = 0
+        focus_window('0x123abc')
+        self.assertEqual(run.call_args.args[0], [
+            'hyprctl', 'dispatch',
+            'hl.dsp.focus({ window = "address:0x123abc" })',
+        ])
+
+    @mock.patch('helper.subprocess.run')
+    def test_focus_falls_back_for_older_hyprland(self, run):
+        run.side_effect = [mock.Mock(returncode=1), mock.Mock(returncode=0)]
+        focus_window('0x123abc')
+        self.assertEqual(run.call_args_list[1].args[0], [
+            'hyprctl', 'dispatch', 'focuswindow', 'address:0x123abc',
+        ])
+
+    def test_focus_rejects_invalid_address(self):
+        with self.assertRaises(ValueError):
+            focus_window('activewindow; os.exit()')
 
 
 if __name__ == '__main__':

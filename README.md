@@ -23,9 +23,12 @@ The short path on Arch Linux:
 2. Run `./install.sh /path/to/Spark.exe` from the repository root.
 3. Launch with `./run-spark.sh`. Use that command for later launches too.
 
-The app and Wine state stay in this directory. The login handler registers with your desktop.
+The app and Wine state stay in this directory. The installer adds a normal
+application launcher and registers Spark for browser callbacks, deep links,
+and `mailto:` links with your desktop.
 
-On Hyprland, [this optional window rule](share/hyprland-spark-tray.conf) hides Wine’s stray tray tile.
+After Spark's renderer is ready, the launcher closes Wine's `explorer.exe`
+desktop helper so the tray icon does not remain as a small standalone window.
 
 ## What works
 
@@ -34,7 +37,12 @@ Version 3.30.12 has passed desktop startup checks. Its mail, calendar, and attac
 Version 3.31.0 has passed desktop startup checks and a read-only CLI check. Its mail, calendar, and attachment operations still need separate checks.
 
 Bubblewrap contains filesystem writes but retains network and display access. It is not a security sandbox.
+If an existing Wine installation only starts with its original home and temporary directories, create an ignored
+`spark.local.env` containing `SPARK_CONTAINER=0`. The launcher also accepts `SPARK_APP` and `SPARK_PREFIX` there,
+so an existing installation can be adopted without copying its non-relocatable Wine prefix.
 Notifications depend on Spark’s database format, which future updates can change. File dialogs use Wine’s interface.
+The launcher disables optional PowerShell hardware probes. A PowerShell installation in a reused Wine prefix can
+otherwise open many Wine debugger dialogs; Spark continues without that diagnostic hardware metadata.
 
 ## Spark CLI
 

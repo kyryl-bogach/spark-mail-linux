@@ -5,8 +5,8 @@
 #
 # The script checks dependencies, extracts the NSIS installer, verifies that
 # the extraction is complete, builds the shims, patches Foundation.dll, and
-# registers the login handler. Nothing is installed system-wide except the
-# desktop handler entry.
+# registers the app launcher and login handler. Nothing is installed
+# system-wide except those desktop entries.
 #
 # Get the installer from the official release notes:
 #   https://sparkmailapp.com/spark3/win/changelog
@@ -28,7 +28,7 @@ fi
 
 # command:package pairs for Arch Linux. Wine may come from the bundled
 # runtime instead of the system package.
-deps=$'bwrap:bubblewrap\npython3:python\nbsdtar:libarchive\nclang:clang\nobjdump:binutils\nnotify-send:libnotify\nupdate-desktop-database:desktop-file-utils'
+deps=$'bwrap:bubblewrap\npython3:python\nbsdtar:libarchive\nclang:clang\nobjdump:binutils\nnotify-send:libnotify\nupdate-desktop-database:desktop-file-utils\nxdg-mime:xdg-utils'
 missing=
 while IFS=: read -r cmd pkg; do
   [ -z "$cmd" ] && continue

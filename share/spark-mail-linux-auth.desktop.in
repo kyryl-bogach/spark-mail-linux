@@ -1,7 +1,7 @@
 [Desktop Entry]
 Type=Application
-Name=Spark Mail Linux OAuth Callback
+Name=Spark Mail Linux Link Handler
 Exec=@SPARK_ROOT@/bin/auth-callback.py %u
 NoDisplay=true
 Terminal=false
-MimeType=x-scheme-handler/com.googleusercontent.apps.681834923750-3p9205dgnfbq0s196910u38tmn61ehc2;x-scheme-handler/com.readdle.spark.auth-bridge.desktop-dist;x-scheme-handler/oauth.redirect.com.readdle.smartmail;
+MimeType=x-scheme-handler/com.googleusercontent.apps.681834923750-3p9205dgnfbq0s196910u38tmn61ehc2;x-scheme-handler/com.readdle.spark.auth-bridge.desktop-dist;x-scheme-handler/com.readdle.spark.utm.email.desktop;x-scheme-handler/hotmail.com.readdle.smartmail.desktop;x-scheme-handler/mailto;x-scheme-handler/msauth.com.readdle.smartmail.desktop;x-scheme-handler/oauth.redirect.com.readdle.smartmail;x-scheme-handler/readdle-spark;x-scheme-handler/readdlespark;x-scheme-handler/spark-mail-url;x-scheme-handler/stripe.com.readdle.spark;x-scheme-handler/yahoo.com.readdle.smartmail.desktop;

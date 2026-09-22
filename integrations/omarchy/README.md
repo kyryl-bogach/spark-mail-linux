@@ -38,8 +38,10 @@ Run the installer again if you move the repository.
 Spark Desktop must run, and Spark CLI access must permit account reads.
 The plugin refreshes every 60 seconds and when the popup opens.
 If Spark is closed, the plugin shows that state without a background launch.
+If CLI access is enabled but no account is shared, the plugin points back to
+Spark's AI Agents settings instead of reporting an empty inbox.
 
-The helper reuses `bin/spark` and its Wine prefix, Bubblewrap mounts, and notification guard.
+The helper reuses `bin/spark`, its Wine settings, optional Bubblewrap mounts, and notification guard.
 Email output stays in memory. The helper suppresses CLI diagnostics.
 A failed refresh clears the list and shows an error.
 

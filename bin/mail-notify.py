@@ -10,6 +10,7 @@ which also runs run-spark.sh, from starting a second copy.
 """
 import fcntl
 import glob
+import json
 import os
 import signal
 import sqlite3
@@ -19,6 +20,7 @@ import time
 
 ROOT = os.environ.get('SPARK_ROOT') or os.path.dirname(
     os.path.dirname(os.path.abspath(__file__)))
+PREFIX = os.environ.get('SPARK_PREFIX') or os.path.join(ROOT, 'prefix')
 STATE = os.path.join(ROOT, 'mail-notify.state')
 LOCK = os.path.join(ROOT, 'mail-notify.lock')
 POLL_SECONDS = int(os.environ.get('SPARK_POLL_SECONDS', '15'))
@@ -26,8 +28,8 @@ POLL_SECONDS = int(os.environ.get('SPARK_POLL_SECONDS', '15'))
 # Spark stores the database under the Wine user's AppData. The prefix user name
 # follows the host user, so find it instead of hard-coding a name.
 DB_GLOB = os.path.join(
-    ROOT, 'prefix/drive_c/users/*/AppData/Local/Spark Desktop'
-          '/core-data/databases/messages.sqlite')
+    PREFIX, 'drive_c/users/*/AppData/Local/Spark Desktop'
+            '/core-data/databases/messages.sqlite')
 
 MATCH = 'unseen = 1 AND inInbox = 1 AND inSent = 0'
 NEW_ROWS = ('SELECT pk, messageFromMailbox, subject FROM messages '
@@ -42,18 +44,22 @@ def find_db():
     return None
 
 
-def read_mark():
+def read_mark(database):
     try:
         with open(STATE) as f:
-            return int(f.read().strip())
-    except (OSError, ValueError):
-        return -1  # first run: adopt the current maximum, notify nothing
+            state = json.load(f)
+        if isinstance(state, dict) and state.get('database') == database:
+            return int(state['mark'])
+    except (OSError, TypeError, ValueError, KeyError):
+        pass
+    return -1  # new database: adopt the current maximum, notify nothing
 
 
-def write_mark(mark):
+def write_mark(database, mark):
     tmp = STATE + '.tmp'
     with open(tmp, 'w') as f:
-        f.write(str(mark))
+        json.dump({'database': database, 'mark': mark}, f)
+        f.write('\n')
     os.replace(tmp, STATE)
 
 
@@ -96,14 +102,18 @@ def main():
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
     except OSError:
         return  # another watcher already holds the lock
-    mark = read_mark()
+    database = None
+    mark = -1
     while True:
         db = find_db()
         if db:
+            if db != database:
+                database = db
+                mark = read_mark(database)
             new_mark = poll(db, mark)
             if new_mark != mark:
                 mark = new_mark
-                write_mark(mark)
+                write_mark(database, mark)
         time.sleep(POLL_SECONDS)
 
 

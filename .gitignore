@@ -2,6 +2,8 @@
 # Never commit any of these.
 app/
 prefix/
+/app
+/prefix
 test-home/
 runtime/
 tmp/
@@ -16,6 +18,7 @@ tmp/
 *.dmp
 mail-notify.state
 mail-notify.lock
+spark.local.env
 
 # Installers and downloaded runtimes
 *.exe

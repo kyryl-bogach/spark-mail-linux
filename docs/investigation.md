@@ -123,10 +123,13 @@ Spark is an Electron app. At launch it registers its URL schemes in the Wine
 prefix under `HKCU`. Each entry points at `"Spark Desktop.exe" --win-open-url
 "%1"`.
 
-Google sign-in opens the host browser, so the host needs
-`x-scheme-handler` entries for the three callback schemes Spark registers. The
-desktop template in `share/` provides them, and `auth-callback.py` validates
-the scheme against an allowlist before it acts.
+Browser sign-in and deep links need matching host `x-scheme-handler` entries
+for every custom scheme Spark registers. Spark 3.30.12 logged eleven schemes
+covering Google, Microsoft, Yahoo, Stripe, campaign links, and Spark's own deep
+links. The desktop template in `share/` registers the complete observed set,
+`install-handler.sh` makes the hidden handler the default for each
+Spark-specific scheme, and `auth-callback.py` validates the same allowlist
+before it acts.
 
 The important fix was in the launcher, not the handler. The launcher used
 `--tmpfs /tmp`. A callback invocation therefore got a fresh wineserver socket
@@ -141,13 +144,32 @@ receives the URL in the primary process.
 Result: Google consent completed in the host browser, the callback reached
 Spark, and login and onboarding succeeded.
 
+## PowerShell hardware probes
+
+Spark's system-information dependency launches several PowerShell commands for
+disk, display, processor, BIOS, and other diagnostic hardware metadata when a
+PowerShell executable is available. A reused Wine prefix with PowerShell 7
+installed spawned one `pwsh.exe` per probe. Each process failed with exception
+`0xe0434352` and opened a Wine `Program Error` dialog, producing 17 dialogs in
+one observed launch. Spark itself still reached its ready state.
+
+Adding both `powershell.exe` and `pwsh.exe` to the disabled DLL overrides
+prevented the probes from starting. The repeated exceptions and debugger
+windows fell to zero while Spark and SparkCore still reached ready. The
+launcher therefore disables both executable names by default. This removes
+optional hardware metadata; it does not disable a Spark mail feature.
+
 ## Tray tile and notifications
 
 Spark registers a tray icon. The log shows `fixme:systray:Shell_NotifyIconGetRect`
 stubs. With no `StatusNotifierWatcher` on the session bus, Wine's
 `explorer.exe` draws the icon as a small floating tile. That window has class
-`explorer.exe` and an empty title. The Hyprland rule in `share/` sends it to a
-hidden workspace and denies it initial focus.
+`explorer.exe` and an empty title. Terminating that helper left Spark's main
+window, renderer, CLI, and notification watcher running. The launcher therefore
+waits for Spark's renderer and then terminates only the matching `explorer.exe
+/desktop` process from the same Wine prefix. Disabling `explorer.exe` before
+startup also prevented Spark's main window from opening, so it must remain
+available during initialization.
 
 Spark's new-mail notifications use Windows toasts, which Wine stubs out. Mail
 events arrive, and the push pipeline is visible in the log, but nothing

@@ -77,7 +77,10 @@ Check every item. A live process alone does not prove a successful startup.
 3. Patches: `objdump -p` on `Foundation.dll` lists imports from `sprkenv.dll`
    and `sprkiphl.dll`. Its path relative to `app/` is
    `resources/app.asar.unpacked/node_modules/@readdle/sparkcore-win/bin/Release/SparkCore.bundle/Foundation.dll`.
-4. Handler: `~/.local/share/applications/spark-mail-linux-auth.desktop` exists.
+4. Desktop integration: `~/.local/share/applications/spark-mail-linux.desktop`
+   and `spark-mail-linux-auth.desktop` exist. The first is the visible app
+   launcher; the second handles browser sign-in callbacks, Spark deep links,
+   and `mailto:` links.
 5. First launch: run `./run-spark.sh`. Confirm a visible, mapped window.
    On Hyprland, `hyprctl clients` must list the Spark window.
 
@@ -123,8 +126,10 @@ Omarchy 4 Lua syntax:
 o.window({ class = "^spark desktop\\.exe$" }, { tile = true })
 ```
 
-The tray tile rule in `share/hyprland-spark-tray.conf` is a separate fix for a
-different window.
+After Spark's renderer is ready, the launcher closes only the `explorer.exe
+/desktop` process from Spark's Wine prefix. That helper otherwise renders the
+tray icon as a separate floating window. No tray-specific Hyprland rule is
+needed.
 
 **Omarchy keybinding.** Omarchy binds `SUPER+SHIFT+E` by default. Unbind it
 before reuse. Example for `~/.config/hypr/bindings.lua`:
@@ -169,11 +174,27 @@ unproven. The watcher is a separate read-only Python process and cannot write
 to the app. If the crash reproduces, run with `SPARK_NOTIFY=0` and keep a
 sanitized log.
 
+**PowerShell debugger dialogs.** Spark runs optional hardware probes through
+PowerShell when it finds one in the Wine prefix. PowerShell 7 under Wine can
+fail every probe and open many `winedbg` dialogs while Spark itself continues.
+The default DLL overrides disable `powershell.exe` and `pwsh.exe`; Spark then
+continues without that diagnostic hardware metadata. A custom
+`SPARK_OVERRIDES` value must preserve those entries unless the prefix has a
+verified working PowerShell installation.
+
+**A browser still opens another mail client.** Chromium-based browsers can
+keep a site-level `mailto:` handler that takes priority before Linux receives
+the link. Confirm that `xdg-mime query default x-scheme-handler/mailto` returns
+`spark-mail-linux-auth.desktop`, then remove the old mail handler under the
+browser's protocol-handler settings. If browser sync restores it, explicitly
+deny that site's handler request so it is recorded as ignored instead of only
+deleted. The installer deliberately does not edit browser profiles.
+
 **Floating window in Hyprland.** See the tiling rule in step 6.
 
 **Everything lives in the repository.** The app, the Wine prefix, and the
 home overlay stay in the project directory. The only system-wide changes are
-the desktop handler entry and any symlink the user approved.
+the desktop launcher and handler entries plus any symlink the user approved.
 
 ## 8. Update Spark later
 
