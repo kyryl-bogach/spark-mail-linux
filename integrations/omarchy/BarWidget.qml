@@ -7,11 +7,12 @@ import qs.Ui
 Panel {
   id: root
   moduleName: "local.spark-mail"
-  ipcTarget: moduleName
+  manageIpc: false
   implicitWidth: button.implicitWidth
   implicitHeight: button.implicitHeight
   property var emails: []
   property string status: "Read the inbox..."
+  readonly property color contentForeground: bar ? bar.foreground : Color.foreground
   readonly property string helper: decodeURIComponent(Qt.resolvedUrl("helper.py").toString().replace(/^file:\/\//, ""))
 
   function refresh() {
@@ -101,7 +102,7 @@ Panel {
               anchors.leftMargin: Style.space(8)
               anchors.verticalCenter: parent.verticalCenter
               text: "Inbox"
-              color: root.barForeground
+              color: root.contentForeground
               font.pixelSize: Style.font.title
               font.bold: true
             }
@@ -111,7 +112,7 @@ Panel {
               width: openLabel.implicitWidth + Style.space(20)
               height: Style.space(32)
               radius: Style.cornerRadius
-              color: openHover.containsMouse ? Style.hoverFillFor(root.barForeground, Color.accent) : "transparent"
+              color: openHover.containsMouse ? Style.hoverFillFor(root.contentForeground, Color.accent) : "transparent"
               Text {
                 id: openLabel
                 anchors.centerIn: parent
@@ -131,7 +132,7 @@ Panel {
           Rectangle {
             width: parent.width
             height: Style.spacing.hairline
-            color: root.barForeground
+            color: root.contentForeground
             opacity: 0.12
           }
           Text {
@@ -139,7 +140,7 @@ Panel {
             width: parent.width
             text: fetch.running ? "Read the inbox..." : root.status
             textFormat: Text.PlainText
-            color: root.barForeground
+            color: root.contentForeground
             font.pixelSize: Style.font.body
             wrapMode: Text.Wrap
             padding: Style.space(8)
@@ -152,7 +153,7 @@ Panel {
               width: content.width
               height: row.implicitHeight + Style.space(20)
               radius: Style.cornerRadius
-              color: hover.containsMouse ? Style.hoverFillFor(root.barForeground, Color.accent) : "transparent"
+              color: hover.containsMouse ? Style.hoverFillFor(root.contentForeground, Color.accent) : "transparent"
               Column {
                 id: row
                 anchors.centerIn: parent
@@ -169,7 +170,7 @@ Panel {
                     text: modelData.sender.replace(/\s*<.*$/, "").replace(/^"|"$/g, "")
                     textFormat: Text.PlainText
                     elide: Text.ElideRight
-                    color: root.barForeground
+                    color: root.contentForeground
                     font.pixelSize: Style.font.body
                     font.bold: true
                   }
@@ -179,7 +180,7 @@ Panel {
                     anchors.verticalCenter: parent.verticalCenter
                     text: modelData.date
                     textFormat: Text.PlainText
-                    color: root.barForeground
+                    color: root.contentForeground
                     font.pixelSize: Style.font.bodySmall
                     opacity: 0.55
                   }
@@ -189,7 +190,7 @@ Panel {
                   text: modelData.subject || "(No subject)"
                   textFormat: Text.PlainText
                   elide: Text.ElideRight
-                  color: root.barForeground
+                  color: root.contentForeground
                   font.pixelSize: Style.font.body
                 }
               }
