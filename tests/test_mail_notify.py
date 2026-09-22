@@ -64,6 +64,20 @@ class MailNotifyTests(unittest.TestCase):
         self.assertEqual(mark, 4)
         notify.assert_called_once_with('Inbox sender', 'Inbox subject')
 
+    def test_state_is_scoped_to_database(self):
+        module = mail_notify_module()
+        module.STATE = str(Path(self.temp.name) / 'mail-notify.state')
+        first_database = 'file:/prefix-one/messages.sqlite?mode=ro'
+        second_database = 'file:/prefix-two/messages.sqlite?mode=ro'
+
+        module.write_mark(first_database, 42)
+
+        self.assertEqual(module.read_mark(first_database), 42)
+        self.assertEqual(module.read_mark(second_database), -1)
+
+        Path(module.STATE).write_text('42')
+        self.assertEqual(module.read_mark(first_database), -1)
+
 
 if __name__ == '__main__':
     unittest.main()

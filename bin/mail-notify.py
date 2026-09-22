@@ -10,6 +10,7 @@ which also runs run-spark.sh, from starting a second copy.
 """
 import fcntl
 import glob
+import json
 import os
 import signal
 import sqlite3
@@ -43,18 +44,22 @@ def find_db():
     return None
 
 
-def read_mark():
+def read_mark(database):
     try:
         with open(STATE) as f:
-            return int(f.read().strip())
-    except (OSError, ValueError):
-        return -1  # first run: adopt the current maximum, notify nothing
+            state = json.load(f)
+        if isinstance(state, dict) and state.get('database') == database:
+            return int(state['mark'])
+    except (OSError, TypeError, ValueError, KeyError):
+        pass
+    return -1  # new database: adopt the current maximum, notify nothing
 
 
-def write_mark(mark):
+def write_mark(database, mark):
     tmp = STATE + '.tmp'
     with open(tmp, 'w') as f:
-        f.write(str(mark))
+        json.dump({'database': database, 'mark': mark}, f)
+        f.write('\n')
     os.replace(tmp, STATE)
 
 
@@ -97,14 +102,18 @@ def main():
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
     except OSError:
         return  # another watcher already holds the lock
-    mark = read_mark()
+    database = None
+    mark = -1
     while True:
         db = find_db()
         if db:
+            if db != database:
+                database = db
+                mark = read_mark(database)
             new_mark = poll(db, mark)
             if new_mark != mark:
                 mark = new_mark
-                write_mark(mark)
+                write_mark(database, mark)
         time.sleep(POLL_SECONDS)
 
 

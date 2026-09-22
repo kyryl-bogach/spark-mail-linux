@@ -135,6 +135,8 @@ class LauncherTests(unittest.TestCase):
                          'Release' / 'SparkCore.bundle' / 'spark.exe')
             spark_cli.parent.mkdir(parents=True, exist_ok=True)
             spark_cli.touch()
+            (root / 'spark.local.env').write_text(
+                'SPARK_EXE="/missing/Spark Desktop.exe"\n')
 
             fake_wine = root / 'fake-wine'
             result_file = root / 'wine-environment'
@@ -154,6 +156,48 @@ class LauncherTests(unittest.TestCase):
                 check=True, capture_output=True, text=True)
 
             self.assertEqual(result_file.read_text().splitlines(), ['0', '0'])
+
+    def test_launcher_stops_tray_helper_when_wine_exits(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = self.make_root(temporary)
+            bin_dir = root / 'bin'
+            bin_dir.mkdir()
+            tray_state = root / 'tray-state'
+            tray_helper = bin_dir / 'close-tray.py'
+            tray_helper.write_text(
+                'import os\n'
+                'from pathlib import Path\n'
+                'import signal\n'
+                'import sys\n'
+                'import time\n'
+                'state = Path(os.environ["TRAY_STATE"])\n'
+                'def stop(*_):\n'
+                '    state.write_text("stopped")\n'
+                '    sys.exit(0)\n'
+                'signal.signal(signal.SIGTERM, stop)\n'
+                'state.write_text("ready")\n'
+                'while True:\n'
+                '    time.sleep(1)\n')
+            fake_wine = root / 'fake-wine'
+            fake_wine.write_text(
+                '#!/bin/sh\n'
+                'while [ "$(cat "$TRAY_STATE" 2>/dev/null)" != ready ]; do '
+                'sleep 0.01; done\n')
+            fake_wine.chmod(0o755)
+            environment = dict(
+                os.environ,
+                SPARK_CONTAINER='0',
+                SPARK_NOTIFY='0',
+                SPARK_ROOT=str(root),
+                SPARK_WINE=str(fake_wine),
+                TRAY_STATE=str(tray_state),
+            )
+
+            subprocess.run(
+                [ROOT / 'run-spark.sh'], env=environment,
+                check=True, capture_output=True, text=True)
+
+            self.assertEqual(tray_state.read_text(), 'stopped')
 
 
 if __name__ == '__main__':

@@ -40,7 +40,11 @@ if [ -z "$wine" ]; then
 fi
 [ -n "$wine" ] && [ -x "$wine" ] || { echo "error: no wine binary. Set SPARK_WINE." >&2; exit 1; }
 
-exe=${SPARK_EXE:-$app/Spark Desktop.exe}
+if [ "${SPARK_CLI:-0}" = 1 ]; then
+  exe=$app/resources/app.asar.unpacked/node_modules/@readdle/sparkcore-win/bin/Release/SparkCore.bundle/spark.exe
+else
+  exe=${SPARK_EXE:-$app/Spark Desktop.exe}
+fi
 [ -f "$exe" ] || { echo "error: missing $exe. Extract the installer first." >&2; exit 1; }
 
 # A Spark update can replace Foundation.dll while leaving old shims beside the
@@ -78,8 +82,16 @@ mkdir -p "$tmp_dir" "$home_overlay"
 # a nonzero wine exit under 'set -e' and an interrupt.
 # Set SPARK_NOTIFY=0 for short-lived invocations such as the Spark CLI.
 watcher=
+tray_closer=
 cleanup() {
-  [ -z "$watcher" ] || kill "$watcher" 2>/dev/null || true
+  if [ -n "$watcher" ]; then
+    kill "$watcher" 2>/dev/null || true
+    wait "$watcher" 2>/dev/null || true
+  fi
+  if [ -n "$tray_closer" ]; then
+    kill "$tray_closer" 2>/dev/null || true
+    wait "$tray_closer" 2>/dev/null || true
+  fi
 }
 trap cleanup EXIT
 if [ "${SPARK_NOTIFY:-1}" != 0 ] && { [ -x "$root/bin/mail-notify.py" ] || [ -f "$root/bin/mail-notify.py" ]; }; then
@@ -92,6 +104,7 @@ fi
 # helper, and only after Spark's renderer exists in this exact Wine prefix.
 if [ "${SPARK_CLOSE_TRAY:-1}" != 0 ] && [ -f "$root/bin/close-tray.py" ]; then
   python3 "$root/bin/close-tray.py" "$prefix" &
+  tray_closer=$!
 fi
 
 status=0
