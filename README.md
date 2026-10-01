@@ -6,7 +6,7 @@ Run [Spark Mail](https://sparkmailapp.com/) for Windows on Linux with Wine.
 Two small DLL shims prevent known crashes. Scripts handle launch, browser login, and native notifications.
 
 - **Unofficial.** Readdle does not support this project.
-- **Verified:** Spark 3.31.3.141074 starts on Arch Linux with Wine 11.16.
+- **Verified:** Spark 3.31.4.141104 starts on Arch Linux with Wine 11.16.
 - **CLI:** The bundled Windows CLI works through [bin/spark](bin/spark). Spark Desktop must remain open.
 - **Updates:** Follow the [update procedure](AGENTS.md#update-spark), not Spark’s update button.
 
@@ -27,8 +27,16 @@ The app and Wine state stay in this directory. The installer adds a normal
 application launcher and registers Spark for browser callbacks, deep links,
 and `mailto:` links with your desktop.
 
-After Spark's renderer is ready, the launcher closes Wine's `explorer.exe`
-desktop helper so the tray icon does not remain as a small standalone window.
+Web links use the host desktop portal to open your default browser with its existing profile.
+This requires `python-gobject`, `xdg-desktop-portal`, and a portal backend for your desktop.
+Omarchy already provides the portal backend.
+
+After Spark's renderer is ready, the launcher hides Wine's tray window.
+It keeps `explorer.exe` active because that process manages the clipboard.
+Wine then shares copied text with the desktop clipboard through XWayland.
+
+The tray helper requires `xprop` and `libX11`.
+If Spark already runs, quit Spark fully and launch it again with `./run-spark.sh` to apply these changes.
 
 ## What works
 
@@ -37,6 +45,9 @@ Version 3.30.12 has passed desktop startup checks. Its mail, calendar, and attac
 Version 3.31.1 has passed desktop startup, notification watcher, and read-only CLI checks. Its mail, calendar, and attachment operations still need separate checks.
 Version 3.31.2 has passed desktop startup, notification watcher, and read-only CLI checks. Its mail, calendar, and attachment operations still need separate checks.
 Version 3.31.3 has passed desktop startup, notification watcher, and read-only CLI checks. Its mail, calendar, and attachment operations still need separate checks.
+Version 3.31.4.141104 has passed desktop startup, notification watcher, and read-only CLI account checks with CLI 1.3.1.
+The host browser check passes, and host clipboard text matches Wine's clipboard when Spark has focus.
+Its mail, calendar, attachments, notification delivery, and both message copy actions still need separate checks.
 
 Bubblewrap contains filesystem writes but retains network and display access. It is not a security sandbox.
 If an existing Wine installation only starts with its original home and temporary directories, create an ignored

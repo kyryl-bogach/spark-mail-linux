@@ -28,7 +28,7 @@ fi
 
 # command:package pairs for Arch Linux. Wine may come from the bundled
 # runtime instead of the system package.
-deps=$'bwrap:bubblewrap\npython3:python\nbsdtar:libarchive\nclang:clang\nobjdump:binutils\nnotify-send:libnotify\nupdate-desktop-database:desktop-file-utils\nxdg-mime:xdg-utils'
+deps=$'bwrap:bubblewrap\npython3:python\nbsdtar:libarchive\nclang:clang\nobjdump:binutils\nnotify-send:libnotify\nupdate-desktop-database:desktop-file-utils\nxdg-mime:xdg-utils\nxprop:xorg-xprop\nxdg-desktop-portal:xdg-desktop-portal'
 missing=
 while IFS=: read -r cmd pkg; do
   [ -z "$cmd" ] && continue
@@ -36,6 +36,9 @@ while IFS=: read -r cmd pkg; do
     missing="$missing  $cmd (pacman -S $pkg)"$'\n'
   fi
 done <<< "$deps"
+if ! python3 -c 'from gi.repository import Gio, GLib' >/dev/null 2>&1; then
+  missing="$missing  PyGObject (pacman -S python-gobject)"$'\n'
+fi
 if ! command -v wine >/dev/null 2>&1 && [ ! -x "$root/runtime/usr/bin/wine" ]; then
   missing="$missing  wine (pacman -S wine)"$'\n'
 fi

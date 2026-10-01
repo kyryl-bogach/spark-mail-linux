@@ -165,11 +165,51 @@ Spark registers a tray icon. The log shows `fixme:systray:Shell_NotifyIconGetRec
 stubs. With no `StatusNotifierWatcher` on the session bus, Wine's
 `explorer.exe` draws the icon as a small floating tile. That window has class
 `explorer.exe` and an empty title. Terminating that helper left Spark's main
-window, renderer, CLI, and notification watcher running. The launcher therefore
-waits for Spark's renderer and then terminates only the matching `explorer.exe
-/desktop` process from the same Wine prefix. Disabling `explorer.exe` before
-startup also prevented Spark's main window from opening, so it must remain
-available during initialization.
+window, renderer, CLI, and notification watcher active. However, that process also owns Wine's clipboard manager.
+The earlier termination removed the bridge between the Windows clipboard and the desktop clipboard.
+[Wine's desktop code](https://github.com/wine-mirror/wine/blob/master/programs/explorer/desktop.c) starts the clipboard thread inside `explorer.exe`.
+
+The launcher now sends `WM_DELETE_WINDOW` only to the tray window owned by the matching explorer process.
+[Wine's tray code](https://github.com/wine-mirror/wine/blob/master/programs/explorer/systray.c) handles `WM_CLOSE` by hiding the tray window.
+The explorer process remains active to manage the clipboard.
+
+On 2026-10-01, host clipboard text matched Wine's clipboard with Spark 3.31.4.141104 focused.
+A native test helper read the clipboard and compared a hash without changing or printing the clipboard content.
+Both message copy actions still need direct UI checks.
+
+## Host browser
+
+Wine's default browser command uses `xdg-open` inside Bubblewrap.
+That command inherits the home overlay, so Chrome uses a separate profile without the host browser's account state.
+The launcher adds `bin/host-tools` to Wine's PATH so Wine finds the local `xdg-open` wrapper first.
+
+The helper calls the desktop portal's [OpenURI method](https://flatpak.github.io/xdg-desktop-portal/docs/doc-org.freedesktop.portal.OpenURI.html).
+The portal opens the host browser outside the home overlay.
+The helper waits for the portal response and never logs the URL.
+
+CLI calls skip the wrapper and all desktop helpers.
+On 2026-10-01, the wrapper and portal checks passed inside Bubblewrap while the existing host Chrome process remained active.
+Wine's browser command also passed after removal of the earlier `WineBrowser\Browsers` override.
+
+The initial browser change added a separate `wine reg.exe` command before Spark.
+That command could block startup before the launcher reaches Spark.
+The launcher now starts Spark through one Wine command, as before the browser change.
+
+Browser integration changes only Wine's PATH and does not block startup.
+
+## Spark 3.31.4.141104 update
+
+The official Windows release notes list 3.31.4.141104, released on 2026-09-29.
+The installer manifest matches all 297 extracted files, and both Foundation patches preserve the expected imports.
+The update retains the existing prefix, home overlay, and Wine 11.16 runtime.
+
+On 2026-10-01, Spark creates a visible window, reports the new version, and reaches SparkCore ready without the known Foundation crashes.
+The notification watcher and Wine clipboard manager remain active.
+CLI 1.3.1 passes help, version, and read-only account checks with existing account state.
+
+Mail, calendar, attachments, notification delivery, and both message copy actions remain unverified on this release.
+
+## Native notifications
 
 Spark's new-mail notifications use Windows toasts, which Wine stubs out. Mail
 events arrive, and the push pipeline is visible in the log, but nothing

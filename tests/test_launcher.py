@@ -9,6 +9,51 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class LauncherTests(unittest.TestCase):
+    def test_starts_wine_once_and_limits_the_browser_wrapper_to_the_desktop(self):
+        with tempfile.TemporaryDirectory(prefix='spark test ') as temporary:
+            root = self.make_root(temporary)
+            fake_wine = root / 'fake-wine'
+            calls = root / 'calls'
+            wine_path = root / 'wine-path'
+            fake_wine.write_text(
+                '#!/bin/sh\n'
+                'printf "%s\\n" "$@" >> "$CALLS"\n'
+                'printf "%s" "$PATH" > "$WINE_PATH"\n')
+            fake_wine.chmod(0o755)
+            environment = dict(os.environ, SPARK_ROOT=str(root), SPARK_CONTAINER='0',
+                               SPARK_NOTIFY='0', SPARK_WINE=str(fake_wine), CALLS=str(calls),
+                               WINE_PATH=str(wine_path))
+            subprocess.run([ROOT / 'run-spark.sh'], env=environment,
+                           check=True, capture_output=True)
+            self.assertEqual(calls.read_text().splitlines(),
+                             [str(root / 'app' / 'Spark Desktop.exe')])
+            self.assertEqual(wine_path.read_text(), f'{root}/bin/host-tools:{os.environ["PATH"]}')
+
+            calls.unlink()
+            cli = next(root.glob('app/**/Foundation.dll')).with_name('spark.exe')
+            cli.touch()
+            subprocess.run([ROOT / 'run-spark.sh', '--help'],
+                           env=dict(environment, SPARK_CLI='1'), check=True, capture_output=True)
+            self.assertEqual(calls.read_text().splitlines(), [str(cli), '--help'])
+            self.assertEqual(wine_path.read_text(), os.environ['PATH'])
+
+    def test_missing_browser_helper_does_not_block_desktop_startup(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = self.make_root(temporary)
+            (root / 'bin' / 'open-host-url.py').unlink()
+            fake_wine = root / 'fake-wine'
+            calls = root / 'calls'
+            fake_wine.write_text(
+                '#!/bin/sh\nprintf "%s\\n" "$1" >> "$CALLS"\n')
+            fake_wine.chmod(0o755)
+            environment = dict(os.environ, SPARK_ROOT=str(root), SPARK_CONTAINER='0',
+                               SPARK_NOTIFY='0', SPARK_WINE=str(fake_wine), CALLS=str(calls))
+            result = subprocess.run([ROOT / 'run-spark.sh'], env=environment,
+                                    capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(calls.read_text().splitlines(),
+                             [str(root / 'app' / 'Spark Desktop.exe')])
+
     def make_root(self, temporary):
         root = Path(temporary)
         app = root / 'app'
@@ -20,6 +65,9 @@ class LauncherTests(unittest.TestCase):
         (app / 'Spark Desktop.exe').touch()
         (app / 'sprkenv.dll').touch()
         (app / 'sprkiphl.dll').touch()
+        (root / 'bin').mkdir()
+        (root / 'bin' / 'open-host-url.py').write_bytes(
+            (ROOT / 'bin' / 'open-host-url.py').read_bytes())
         return root
 
     def test_default_overrides_disable_powershell_probes(self):
@@ -49,6 +97,9 @@ class LauncherTests(unittest.TestCase):
             override_index = values.index('WINEDLLOVERRIDES')
             overrides = values[override_index + 1]
             self.assertIn('powershell.exe,pwsh.exe=d', overrides)
+            path_index = values.index('PATH')
+            self.assertEqual(values[path_index + 1], f'{root}/bin/host-tools:{environment["PATH"]}')
+            self.assertEqual(values[-1], str(root / 'app' / 'Spark Desktop.exe'))
 
     def test_direct_wine_fallback_keeps_launcher_environment(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -122,7 +173,6 @@ class LauncherTests(unittest.TestCase):
     def test_cli_disables_desktop_background_helpers(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = self.make_root(temporary)
-            (root / 'bin').mkdir()
             (root / 'bin' / 'spark').write_bytes(
                 (ROOT / 'bin' / 'spark').read_bytes())
             (root / 'bin' / 'spark').chmod(0o755)
@@ -161,7 +211,6 @@ class LauncherTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             root = self.make_root(temporary)
             bin_dir = root / 'bin'
-            bin_dir.mkdir()
             tray_state = root / 'tray-state'
             tray_helper = bin_dir / 'close-tray.py'
             tray_helper.write_text(

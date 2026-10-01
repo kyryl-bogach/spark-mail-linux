@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+# Open web links through the host portal. Preserve other xdg-open requests.
+set -euo pipefail
+
+case ${1:-} in
+  [hH][tT][tT][pP]://*|[hH][tT][tT][pP][sS]://*)
+    here=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+    exec /usr/bin/python3 "$here/open-host-url.py" "$@"
+    ;;
+  *)
+    exec /usr/bin/xdg-open "$@"
+    ;;
+esac

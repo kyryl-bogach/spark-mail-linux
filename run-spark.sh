@@ -99,9 +99,8 @@ if [ "${SPARK_NOTIFY:-1}" != 0 ] && { [ -x "$root/bin/mail-notify.py" ] || [ -f 
   watcher=$!
 fi
 
-# Wine needs explorer.exe while Spark initializes, but its /desktop process
-# later exposes the tray icon as a tiny standalone window. Close only that
-# helper, and only after Spark's renderer exists in this exact Wine prefix.
+# Wine's explorer.exe manages the clipboard and exposes a standalone tray window.
+# Hide only that window after Spark's renderer exists in this Wine prefix.
 if [ "${SPARK_CLOSE_TRAY:-1}" != 0 ] && [ -f "$root/bin/close-tray.py" ]; then
   python3 "$root/bin/close-tray.py" "$prefix" &
   tray_closer=$!
@@ -110,10 +109,16 @@ fi
 status=0
 overrides=${SPARK_OVERRIDES:-winemenubuilder.exe=d;powershell.exe,pwsh.exe=d;mscoree=d;mshtml=d;ucrtbase,concrt140,msvcp140,msvcp140_1,msvcp140_2,msvcp140_atomic_wait,msvcp140_codecvt_ids,vcamp140,vccorlib140,vcomp140,vcruntime140,vcruntime140_1,vcruntime140_threads=n,b}
 debug=${SPARK_DEBUG:--all}
+wine_path=$PATH
+# Wine finds this xdg-open wrapper before the system command.
+# Keep browser integration out of Wine's startup sequence.
+if [ "${SPARK_CLI:-0}" != 1 ]; then
+  wine_path=$root/bin/host-tools:$PATH
+fi
 if [ "${SPARK_CONTAINER:-1}" = 0 ]; then
   (
     cd "$app"
-    export SPARK_ROOT=$root WINEPREFIX=$prefix WINEDLLOVERRIDES=$overrides WINEDEBUG=$debug
+    export SPARK_ROOT=$root WINEPREFIX=$prefix WINEDLLOVERRIDES=$overrides WINEDEBUG=$debug PATH=$wine_path
     "$wine" "$exe" "$@"
   ) || status=$?
 else
@@ -131,6 +136,7 @@ else
     --setenv SPARK_ROOT "$root" \
     --setenv WINEDLLOVERRIDES "$overrides" \
     --setenv WINEDEBUG "$debug" \
+    --setenv PATH "$wine_path" \
     --chdir "$app" \
     "$wine" "$exe" "$@" || status=$?
 fi

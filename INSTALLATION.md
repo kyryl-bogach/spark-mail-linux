@@ -53,7 +53,7 @@ login handler. It stops with a clear error if any step fails.
 If you must install manually, run these commands from the repository root:
 
 ```bash
-sudo pacman -S wine bubblewrap python libarchive clang binutils libnotify desktop-file-utils
+sudo pacman -S wine bubblewrap python python-gobject libarchive clang binutils libnotify desktop-file-utils xdg-utils xorg-xprop xdg-desktop-portal
 
 mkdir -p app
 bsdtar -xf /path/to/Spark.exe -C app
@@ -126,10 +126,18 @@ Omarchy 4 Lua syntax:
 o.window({ class = "^spark desktop\\.exe$" }, { tile = true })
 ```
 
-After Spark's renderer is ready, the launcher closes only the `explorer.exe
-/desktop` process from Spark's Wine prefix. That helper otherwise renders the
-tray icon as a separate floating window. No tray-specific Hyprland rule is
-needed.
+After Spark's renderer is ready, the launcher closes only Wine's tray window.
+Wine hides that window and keeps `explorer.exe` active to manage the clipboard.
+The helper checks the process prefix, window class, and process ID before it sends the close request.
+
+No tray-specific Hyprland rule is needed.
+
+Web links use the desktop portal to open the host browser with its existing profile.
+Install a portal backend for your desktop if none exists.
+Omarchy supplies its portal backend.
+
+If the portal fails, the helper reports an error without the URL.
+It does not fall back to a browser in the home overlay.
 
 **Omarchy keybinding.** Omarchy binds `SUPER+SHIFT+E` by default. Unbind it
 before reuse. Example for `~/.config/hypr/bindings.lua`:
