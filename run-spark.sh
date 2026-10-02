@@ -120,8 +120,8 @@ if [ "${SPARK_CLOSE_TRAY:-1}" != 0 ] && [ -f "$root/bin/close-tray.py" ]; then
   tray_closer=$!
 fi
 
-# Wine maps a host PNG-only selection to a registered PNG format, but Spark's
-# editor needs CF_DIB. The watcher adds it when Spark's XWayland window has focus.
+# Wine can expose image-only selections without CF_DIB, which Spark's editor
+# needs. The watcher adds it when Spark's XWayland window has focus.
 if [ "${SPARK_IMAGE_BRIDGE:-1}" != 0 ] && [ "${SPARK_CLI:-0}" != 1 ] &&
    [ -f "$root/.build/clipboard-image.exe.so" ] &&
    command -v hyprctl >/dev/null 2>&1 && command -v wl-paste >/dev/null 2>&1; then

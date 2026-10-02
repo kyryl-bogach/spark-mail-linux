@@ -1,50 +1,121 @@
-/* Wine maps an XWayland image/png selection to the registered PNG clipboard
-   format, while Spark's Chromium paste path needs CF_DIB. Add a 32-bit DIB
-   only when PNG is the sole clipboard format: EmptyClipboard would otherwise
-   discard text, HTML, or other formats from the original copy operation. */
+/* Add CF_DIB to an image-only Windows clipboard selection for Spark. Keep the
+   original format; never replace text, HTML, or file lists. */
 #include <windows.h>
 #include <objidl.h>
 #include <gdiplus.h>
 #include <stdint.h>
 #include <string.h>
+#include <stdlib.h>
 
-static int convert_once(void)
+static uint32_t crc32_bytes(const BYTE *data, SIZE_T size)
+{
+    uint32_t crc = 0xffffffffu;
+    for (SIZE_T i = 0; i < size; ++i) {
+        crc ^= data[i];
+        for (int bit = 0; bit < 8; ++bit)
+            crc = (crc >> 1) ^ (0xedb88320u & -(crc & 1u));
+    }
+    return ~crc;
+}
+
+static HGLOBAL read_png_stdin(void)
+{
+    const SIZE_T limit = 64 * 1024 * 1024;
+    SIZE_T used = 0, capacity = 64 * 1024;
+    BYTE *buffer = malloc(capacity);
+    HGLOBAL result = NULL;
+    if (!buffer) return NULL;
+    for (;;) {
+        DWORD got = 0;
+        if (used == capacity) {
+            BYTE *next;
+            if (capacity == limit) break;
+            capacity *= 2;
+            if (capacity > limit) capacity = limit;
+            next = realloc(buffer, capacity);
+            if (!next) break;
+            buffer = next;
+        }
+        if (!ReadFile(GetStdHandle(STD_INPUT_HANDLE), buffer + used,
+                      (DWORD)(capacity - used), &got, NULL)) break;
+        if (!got) {
+            if (used) {
+                result = GlobalAlloc(GMEM_MOVEABLE, used);
+                if (result) {
+                    BYTE *ptr = GlobalLock(result);
+                    if (ptr) { memcpy(ptr, buffer, used); GlobalUnlock(result); }
+                    else { GlobalFree(result); result = NULL; }
+                }
+            }
+            break;
+        }
+        used += got;
+    }
+    free(buffer);
+    return result;
+}
+
+static int convert_once(int argc, char **argv)
 {
     const UINT png_format = RegisterClipboardFormatW(L"PNG");
-    HGLOBAL source, png_copy = NULL, dib = NULL;
+    const UINT jpeg_format = RegisterClipboardFormatW(L"JFIF");
+    const UINT gif_format = RegisterClipboardFormatW(L"GIF");
+    HGLOBAL source, source_copy = NULL, decode_copy = NULL, dib = NULL;
     IStream *stream = NULL;
     GpBitmap *bitmap = NULL;
     BitmapData bits = {0};
     Rect rect = {0};
     UINT width = 0, height = 0;
-    SIZE_T png_size, image_size, dib_size;
+    SIZE_T source_size, image_size, dib_size;
     BYTE *read_ptr, *write_ptr;
-    UINT format = 0, format_count = 0;
+    UINT format = 0, format_count = 0, source_format = 0;
     int result = 0;
+    BOOL host_png = argc == 5 && !strcmp(argv[1], "--host-png");
+    unsigned long expected_size = 0, expected_crc = 0;
+    char *end;
 
-    if (!IsClipboardFormatAvailable(png_format) || IsClipboardFormatAvailable(CF_DIB))
-        return 0;
-    if (!OpenClipboard(GetDesktopWindow())) return 1;
-    while ((format = EnumClipboardFormats(format)) != 0) ++format_count;
-    /* EmptyClipboard would discard every other format, so only convert a
-       clipboard that offers PNG alone. */
-    if (format_count != 1) goto done;
-    source = GetClipboardData(png_format);
-    if (!source || !(png_size = GlobalSize(source)) || png_size > 64 * 1024 * 1024) goto done;
-    png_copy = GlobalAlloc(GMEM_MOVEABLE, png_size);
-    if (!png_copy) goto done;
+    if (host_png) {
+        expected_size = strtoul(argv[3], &end, 10);
+        if (*end || !expected_size || expected_size > 64 * 1024 * 1024) return 1;
+        expected_crc = strtoul(argv[4], &end, 16);
+        if (*end) return 1;
+        decode_copy = read_png_stdin();
+        if (!decode_copy) return 1;
+    }
+
+    if (IsClipboardFormatAvailable(CF_DIB)) { if (decode_copy) GlobalFree(decode_copy); return 0; }
+    if (!OpenClipboard(GetDesktopWindow())) { if (decode_copy) GlobalFree(decode_copy); return 1; }
+    while ((format = EnumClipboardFormats(format)) != 0) {
+        ++format_count;
+        source_format = format;
+    }
+    /* EmptyClipboard discards every other format, so accept one image only. */
+    if (format_count != 1 ||
+        (host_png ? source_format != RegisterClipboardFormatA(argv[2]) :
+         (source_format != png_format && source_format != jpeg_format &&
+          source_format != gif_format && source_format != CF_TIFF))) goto done;
+    source = GetClipboardData(source_format);
+    if (!source || !(source_size = GlobalSize(source)) || source_size > 64 * 1024 * 1024) goto done;
+    source_copy = GlobalAlloc(GMEM_MOVEABLE, source_size);
+    if (!source_copy) goto done;
     read_ptr = GlobalLock(source);
-    write_ptr = GlobalLock(png_copy);
+    write_ptr = GlobalLock(source_copy);
     if (!read_ptr || !write_ptr) {
-        if (write_ptr) GlobalUnlock(png_copy);
+        if (write_ptr) GlobalUnlock(source_copy);
         if (read_ptr) GlobalUnlock(source);
         goto done;
     }
-    memcpy(write_ptr, read_ptr, png_size);
-    GlobalUnlock(png_copy);
+    memcpy(write_ptr, read_ptr, source_size);
+    if (host_png && (source_size != expected_size ||
+                     crc32_bytes(read_ptr, source_size) != (uint32_t)expected_crc)) {
+        GlobalUnlock(source_copy);
+        GlobalUnlock(source);
+        goto done;
+    }
+    GlobalUnlock(source_copy);
     GlobalUnlock(source);
 
-    if (CreateStreamOnHGlobal(png_copy, FALSE, &stream) != S_OK) goto done;
+    if (CreateStreamOnHGlobal(host_png ? decode_copy : source_copy, FALSE, &stream) != S_OK) goto done;
     if (GdipCreateBitmapFromStream(stream, &bitmap) != Ok) goto done;
     if (GdipGetImageWidth((GpImage *)bitmap, &width) != Ok ||
         GdipGetImageHeight((GpImage *)bitmap, &height) != Ok ||
@@ -87,25 +158,26 @@ static int convert_once(void)
     /* Decode and allocate everything before taking ownership of clipboard
        data. The host still owns the original selection until this point. */
     if (!EmptyClipboard()) goto done;
-    if (SetClipboardData(png_format, png_copy)) png_copy = NULL;
+    if (SetClipboardData(source_format, source_copy)) source_copy = NULL;
     if (SetClipboardData(CF_DIB, dib)) dib = NULL;
-    if (!png_copy && !dib) result = 2;
+    if (!source_copy && !dib) result = 2;
 
 done:
     if (bitmap) GdipDisposeImage((GpImage *)bitmap);
     if (stream) stream->lpVtbl->Release(stream);
-    if (png_copy) GlobalFree(png_copy);
+    if (source_copy) GlobalFree(source_copy);
+    if (decode_copy) GlobalFree(decode_copy);
     if (dib) GlobalFree(dib);
     CloseClipboard();
     return result;
 }
 
-int main(void)
+int main(int argc, char **argv)
 {
     ULONG_PTR token;
     struct GdiplusStartupInput input = {1, NULL, FALSE, FALSE};
     if (GdiplusStartup(&token, &input, NULL) != Ok) return 1;
-    int result = convert_once();
+    int result = convert_once(argc, argv);
     GdiplusShutdown(token);
     return result;
 }

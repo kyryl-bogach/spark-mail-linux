@@ -130,7 +130,7 @@ OUT_DIR="$app" "$root/shims/build.sh"
 if command -v winegcc >/dev/null 2>&1; then
   "$root/bin/build-clipboard-image.sh"
 else
-  echo 'warning: winegcc is unavailable; PNG image paste support was not built.' >&2
+  echo 'warning: winegcc is unavailable; image paste support was not built.' >&2
 fi
 python3 "$root/shims/patch-foundation.py"
 python3 "$root/shims/patch-iphlpapi.py"
