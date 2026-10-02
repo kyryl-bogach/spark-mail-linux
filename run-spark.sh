@@ -92,6 +92,7 @@ mkdir -p "$tmp_dir" "$home_overlay"
 # Set SPARK_NOTIFY=0 for short-lived invocations such as the Spark CLI.
 watcher=
 tray_closer=
+image_watcher=
 cleanup() {
   if [ -n "$watcher" ]; then
     kill "$watcher" 2>/dev/null || true
@@ -100,6 +101,10 @@ cleanup() {
   if [ -n "$tray_closer" ]; then
     kill "$tray_closer" 2>/dev/null || true
     wait "$tray_closer" 2>/dev/null || true
+  fi
+  if [ -n "$image_watcher" ]; then
+    kill "$image_watcher" 2>/dev/null || true
+    wait "$image_watcher" 2>/dev/null || true
   fi
 }
 trap cleanup EXIT
@@ -113,6 +118,15 @@ fi
 if [ "${SPARK_CLOSE_TRAY:-1}" != 0 ] && [ -f "$root/bin/close-tray.py" ]; then
   python3 "$root/bin/close-tray.py" "$prefix" &
   tray_closer=$!
+fi
+
+# Wine maps a host PNG-only selection to a registered PNG format, but Spark's
+# editor needs CF_DIB. The watcher adds it when Spark's XWayland window has focus.
+if [ "${SPARK_IMAGE_BRIDGE:-1}" != 0 ] && [ "${SPARK_CLI:-0}" != 1 ] &&
+   [ -f "$root/.build/clipboard-image.exe.so" ] &&
+   command -v hyprctl >/dev/null 2>&1 && command -v wl-paste >/dev/null 2>&1; then
+  python3 "$root/bin/clipboard-image-watch.py" &
+  image_watcher=$!
 fi
 
 status=0

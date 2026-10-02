@@ -34,6 +34,12 @@ Omarchy already provides the portal backend.
 After Spark's renderer is ready, the launcher hides Wine's tray window.
 It keeps `explorer.exe` active because that process manages the clipboard.
 Wine then shares copied text with the desktop clipboard through XWayland.
+On Hyprland, an optional image watcher adds the Windows `CF_DIB` format when
+the host clipboard contains only PNG and Spark has focus. This lets Spark paste
+screenshots with `Ctrl+V`. It needs `winegcc` to build, plus `hyprctl` and
+`wl-paste` at runtime. Existing installations can build it with
+`./bin/build-clipboard-image.sh`, then restart Spark. Clipboard selections
+with text, HTML, or other formats are left alone.
 
 The tray helper requires `xprop` and `libX11`.
 If Spark already runs, quit Spark fully and launch it again with `./run-spark.sh` to apply these changes.
@@ -47,6 +53,7 @@ Version 3.31.2 has passed desktop startup, notification watcher, and read-only C
 Version 3.31.3 has passed desktop startup, notification watcher, and read-only CLI checks. Its mail, calendar, and attachment operations still need separate checks.
 Version 3.31.4.141104 has passed desktop startup, notification watcher, and read-only CLI account checks with CLI 1.3.1.
 The host browser check passes, and host clipboard text matches Wine's clipboard when Spark has focus.
+PNG image paste with `Ctrl+V` passed on Hyprland after the image watcher added `CF_DIB`.
 Its mail, calendar, attachments, notification delivery, and both message copy actions still need separate checks.
 
 Bubblewrap contains filesystem writes but retains network and display access. It is not a security sandbox.
