@@ -75,6 +75,15 @@ if [ -f "$foundation" ]; then
   fi
 fi
 
+# Desktop-session autostart can close inherited stdio descriptors. Electron
+# reads process.stdout during startup and crashes with EBADF if it is closed.
+# Restore only missing descriptors so callers can still capture output.
+if [ "${SPARK_CLI:-0}" != 1 ]; then
+  [ -e /proc/self/fd/0 ] || exec </dev/null
+  [ -e /proc/self/fd/1 ] || exec >/dev/null
+  [ -e /proc/self/fd/2 ] || exec 2>/dev/null
+fi
+
 mkdir -p "$tmp_dir" "$home_overlay"
 
 # Spark's Windows toast notifications do not render under Wine. This watcher

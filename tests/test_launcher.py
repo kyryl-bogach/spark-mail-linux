@@ -9,6 +9,26 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class LauncherTests(unittest.TestCase):
+    def test_desktop_restores_closed_stdout_and_preserves_piped_output(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = self.make_root(temporary)
+            fake_wine = root / 'fake-wine'
+            fake_wine.write_text('#!/bin/sh\nprintf "wine output\\n"\n')
+            fake_wine.chmod(0o755)
+            environment = dict(os.environ, SPARK_ROOT=str(root), SPARK_CONTAINER='0',
+                               SPARK_NOTIFY='0', SPARK_CLOSE_TRAY='0',
+                               SPARK_WINE=str(fake_wine))
+
+            piped = subprocess.run([ROOT / 'run-spark.sh'], env=environment,
+                                   capture_output=True, text=True)
+            self.assertEqual(piped.returncode, 0, piped.stderr)
+            self.assertEqual(piped.stdout, 'wine output\n')
+
+            closed = subprocess.run([ROOT / 'run-spark.sh'], env=environment,
+                                    stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                    preexec_fn=lambda: os.close(1))
+            self.assertEqual(closed.returncode, 0, closed.stderr.decode())
+
     def test_starts_wine_once_and_limits_the_browser_wrapper_to_the_desktop(self):
         with tempfile.TemporaryDirectory(prefix='spark test ') as temporary:
             root = self.make_root(temporary)
