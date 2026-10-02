@@ -1,0 +1,7 @@
+REGEDIT4
+
+[HKEY_CLASSES_ROOT\sparkhostofficefile]
+@="Office Document"
+
+[HKEY_CLASSES_ROOT\sparkhostofficefile\shell\open\command]
+@="\"C:\\windows\\system32\\winebrowser.exe\" \"%1\""

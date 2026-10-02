@@ -24,6 +24,7 @@ Docker does not replace the host display, Wine prefix, or desktop integration in
 | `bin/mail-notify.py` | Reads Spark's database and emits native notifications. |
 | `bin/spark` | Runs the bundled Windows CLI through the desktop launcher. |
 | `install-handler.sh` | Registers the app launcher and URL handler with the host desktop. |
+| `bin/register-host-filetypes.sh` | Adds fallback Wine associations for common document attachments. |
 | `share/` | Contains desktop integration templates. |
 | `tests/` | Covers desktop registration, OAuth validation, and notification polling. |
 | `docs/investigation.md` | Records the Wine failures and the evidence for each workaround. |
