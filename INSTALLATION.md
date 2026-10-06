@@ -48,16 +48,18 @@ root, run:
 
 The script checks dependencies, extracts the installer, verifies the
 extraction, builds the shims, patches `Foundation.dll`, and registers the
-login handler. It stops with a clear error if any step fails.
+login handler. If `winegcc` is available, it also builds the image clipboard
+converter. It stops with a clear error if a required step fails.
 
 If you must install manually, run these commands from the repository root:
 
 ```bash
-sudo pacman -S wine bubblewrap python python-gobject libarchive clang binutils libnotify desktop-file-utils xdg-utils xorg-xprop xdg-desktop-portal
+sudo pacman -S wine bubblewrap python python-gobject libarchive clang binutils libnotify desktop-file-utils xdg-utils xorg-xprop xdg-desktop-portal wl-clipboard
 
 mkdir -p app
 bsdtar -xf /path/to/Spark.exe -C app
 OUT_DIR=app ./shims/build.sh
+./bin/build-clipboard-image.sh
 python3 shims/patch-foundation.py
 python3 shims/patch-iphlpapi.py
 ./install-handler.sh

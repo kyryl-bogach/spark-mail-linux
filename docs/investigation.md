@@ -269,6 +269,22 @@ On 2026-10-06, the helper exits successfully and Spark displays its calendar con
 Local OCR confirms the Today, Week, and October 2026 labels without exposing calendar contents.
 The cold launch path still needs a separate check.
 
+## Office attachment opening
+
+On Spark 3.30.12 with Wine 11.17, clicking an XLSX attachment closed Spark with exit status 1. The Wine trace ended
+in `SHGetFileInfoW` followed by an X11 `BadWindow` error. The exact cause of that X11 error remains unconfirmed.
+PDFs opened normally. The prefix had a `pdffile` association under `HKCR`, but no XLSX association. A disposable XLSX
+stalled before `xdg-open`; after registering XLSX under `HKCR` with `winebrowser.exe`, the same test reached
+`xdg-open` and returned successfully.
+
+The Bubblewrap home overlay hides the host's MIME defaults: XLSX resolved to LibreOffice Calc inside the container,
+while the host selected a different application. A prototype wrapper passed a disposable Office file to the host
+user manager, but repeated clicks on a real attachment did not invoke that wrapper or launch the external handler.
+The live opening path remains unresolved; the prototype wrapper and its WineBrowser override were removed.
+The fallback registration also covers unassociated DOC, DOCX, XLS, PPT, PPTX, ODT, ODS, ODP, CSV, and TSV files;
+these formats were selected because the reference Wine prefix had no default association for them. Their live
+attachment behavior has not been verified.
+
 ## Open observations
 
 These conditions were seen during a 3.30.12 install on Omarchy 4.0.3 with

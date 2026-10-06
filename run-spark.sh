@@ -75,6 +75,15 @@ if [ -f "$foundation" ]; then
   fi
 fi
 
+# Desktop-session autostart can close inherited stdio descriptors. Electron
+# reads process.stdout during startup and crashes with EBADF if it is closed.
+# Restore only missing descriptors so callers can still capture output.
+if [ "${SPARK_CLI:-0}" != 1 ]; then
+  [ -e /proc/self/fd/0 ] || exec </dev/null
+  [ -e /proc/self/fd/1 ] || exec >/dev/null
+  [ -e /proc/self/fd/2 ] || exec 2>/dev/null
+fi
+
 mkdir -p "$tmp_dir" "$home_overlay"
 
 # Spark's Windows toast notifications do not render under Wine. This watcher
@@ -83,6 +92,7 @@ mkdir -p "$tmp_dir" "$home_overlay"
 # Set SPARK_NOTIFY=0 for short-lived invocations such as the Spark CLI.
 watcher=
 tray_closer=
+image_watcher=
 cleanup() {
   if [ -n "$watcher" ]; then
     kill "$watcher" 2>/dev/null || true
@@ -91,6 +101,10 @@ cleanup() {
   if [ -n "$tray_closer" ]; then
     kill "$tray_closer" 2>/dev/null || true
     wait "$tray_closer" 2>/dev/null || true
+  fi
+  if [ -n "$image_watcher" ]; then
+    kill "$image_watcher" 2>/dev/null || true
+    wait "$image_watcher" 2>/dev/null || true
   fi
 }
 trap cleanup EXIT
@@ -104,6 +118,15 @@ fi
 if [ "${SPARK_CLOSE_TRAY:-1}" != 0 ] && [ -f "$root/bin/close-tray.py" ]; then
   python3 "$root/bin/close-tray.py" "$prefix" &
   tray_closer=$!
+fi
+
+# Wine can expose image-only selections without CF_DIB, which Spark's editor
+# needs. The watcher adds it when Spark's XWayland window has focus.
+if [ "${SPARK_IMAGE_BRIDGE:-1}" != 0 ] && [ "${SPARK_CLI:-0}" != 1 ] &&
+   [ -f "$root/.build/clipboard-image.exe.so" ] &&
+   command -v hyprctl >/dev/null 2>&1 && command -v wl-paste >/dev/null 2>&1; then
+  python3 "$root/bin/clipboard-image-watch.py" &
+  image_watcher=$!
 fi
 
 status=0
