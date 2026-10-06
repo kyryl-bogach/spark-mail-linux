@@ -254,6 +254,21 @@ cp Foundation.original.dll \
 This removes both import redirects. The shim DLLs then stay on disk, unused.
 To keep only the profile shim, run `shims/patch-foundation.py` again.
 
+## Calendar navigation from the Omarchy plugin
+
+Spark 3.31.5 accepts `readdle-spark://` URLs, but URL acceptance does not select a view.
+The inspected `ProtocolUrlService` handles several URL actions, but none opens the calendar.
+
+Spark's Windows task menu includes a calendar action with the identifier `OPEN_CALENDAR_ACTION`.
+The second-instance handler accepts `--dock-task-id=<actionId>` and forwards the action to the existing renderer.
+The plugin uses this path through `run-spark.sh` and disables desktop helpers for the short invocation.
+
+An event click opens the calendar view without selecting the specific event.
+This internal argument can change after a Spark update.
+On 2026-10-06, the helper exits successfully and Spark displays its calendar controls.
+Local OCR confirms the Today, Week, and October 2026 labels without exposing calendar contents.
+The cold launch path still needs a separate check.
+
 ## Open observations
 
 These conditions were seen during a 3.30.12 install on Omarchy 4.0.3 with

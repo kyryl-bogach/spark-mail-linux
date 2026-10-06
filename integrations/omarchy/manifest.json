@@ -3,12 +3,12 @@
   "id": "local.spark-mail",
   "name": "Spark Mail",
   "version": "1.0.0",
-  "description": "Spark inbox with an action to open the desktop app",
+  "description": "Spark inbox, calendar, and native meeting reminders",
   "kinds": ["bar-widget"],
   "entryPoints": {"barWidget": "BarWidget.qml"},
   "barWidget": {
     "displayName": "Spark Mail",
-    "description": "Show the Spark inbox",
+    "description": "Show pending mail, upcoming events, and meeting reminders",
     "category": "Info",
     "allowMultiple": false
   }

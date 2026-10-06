@@ -85,8 +85,45 @@ Ensure `~/.local/bin` is on your PATH. The command refuses to replace an existin
 The wrapper uses the desktop’s Wine environment and skips the notification watcher.
 See [CLI maintenance](AGENTS.md#spark-cli) for agent skills and update checks.
 
-An optional [Omarchy plugin](integrations/omarchy/README.md) shows the unified inbox in the bar.
-Click a row to focus Spark. The plugin does not open the selected email.
+## Omarchy plugin
+
+The optional plugin puts the unified inbox and calendar in the Omarchy bar.
+Click an email to open its thread. Click an event to open Spark's calendar.
+
+<img src="docs/screenshots/omarchy-plugin.png" alt="Spark's Omarchy popup with sample emails and calendar events" width="640">
+
+- Emails and events share a card layout, with a fixed header and a popup that grows to 80% of the screen height.
+- The mail icon uses the theme accent when emails remain in the inbox, including read emails.
+- A separate calendar badge appears 15 minutes before an event.
+- Native reminders fire five minutes and one minute before timed events. Calendar changes update or cancel the queued reminders.
+
+The bar states are empty inbox, pending mail, an upcoming event, and both indicators together:
+
+<img src="docs/screenshots/omarchy-plugin-indicators.png" alt="Four bar states: empty inbox, pending mail, meeting soon, and both" width="600">
+
+Calendar reminders use Omarchy's notification cards:
+
+<img src="docs/screenshots/omarchy-plugin-reminders.png" alt="Sample calendar reminders five minutes and one minute before a design review" width="600">
+
+The screenshots use sample data. They contain no mailbox or account details.
+
+The plugin requires Omarchy, Hyprland, and Spark Desktop with CLI read access.
+Run the optional installer from the repository root:
+
+```bash
+./integrations/omarchy/install.sh
+```
+
+See [the plugin guide](integrations/omarchy/README.md) for reminders, settings, and checks.
+Keep Spark's calendar notifications enabled until a real meeting confirms the new reminders.
+
+To regenerate the screenshots after a UI change, run:
+
+```bash
+python3 integrations/omarchy/preview/render.py
+```
+
+The command renders the real widget with a mock helper. It reads no Spark data and schedules no reminders.
 
 ## Update
 
