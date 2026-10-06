@@ -55,6 +55,26 @@ def parse_emails(output):
         raise ValueError('Unsupported email output') from None
 
 
+def event_location(row):
+    """Show the stated location or the conference provider."""
+    location = row.get('location')
+    location = location.strip() if isinstance(location, str) else ''
+    conference = row.get('conference_url')
+    candidate = location or (conference.strip() if isinstance(conference, str) else '')
+    try:
+        url = urlsplit(candidate)
+        host = url.hostname if url.scheme in {'http', 'https'} else None
+    except ValueError:
+        host = None
+    if host:
+        for domain, label in (('meet.google.com', 'Google Meet'), ('zoom.us', 'Zoom'),
+                              ('teams.microsoft.com', 'Microsoft Teams'), ('teams.live.com', 'Microsoft Teams')):
+            if host == domain or host.endswith('.' + domain):
+                return label
+        return location or 'Online meeting'
+    return location
+
+
 def parse_events(output):
     """Use one calendar model for the popup, indicator, and reminders."""
     try:
@@ -79,7 +99,8 @@ def parse_events(output):
                 start_ms = int(start.timestamp() * 1000)
                 time_label = f'{start:%H:%M} – {end:%H:%M}'
             events.append({'id': row['id'], 'title': row['title'] or 'Untitled event',
-                           'day': day.isoformat(), 'time': time_label, 'start_ms': start_ms})
+                           'day': day.isoformat(), 'time': time_label, 'start_ms': start_ms,
+                           'location': event_location(row)})
         return sorted(events, key=lambda event: (event['day'], event['start_ms'] or 0))
     except (KeyError, TypeError, ValueError):
         raise ValueError('Unsupported calendar output') from None
@@ -150,7 +171,7 @@ def calendar_view(status, rows, today):
     first = date.fromisoformat(max(rows[0]['day'], today.isoformat()))
     result['label'] = ('Today' if first == today else 'Tomorrow' if first == today + timedelta(days=1)
                        else f'{first:%A, %b} {first.day}')
-    result['events'] = [{'title': row['title'], 'time': row['time']} for row in rows
+    result['events'] = [{'title': row['title'], 'time': row['time'], 'location': row['location']} for row in rows
                         if max(row['day'], today.isoformat()) == first.isoformat()]
     result['start_times'] = [row['start_ms'] for row in rows if row['start_ms'] is not None]
     return result

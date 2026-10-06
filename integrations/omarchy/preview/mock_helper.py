@@ -13,9 +13,9 @@ emails = [
      'date': (now - timedelta(days=1)).strftime('%Y-%m-%d %H:%M')},
 ]
 events = [
-    {'title': 'Design review', 'time': '09:30 – 10:00'},
-    {'title': 'Daily team check-in', 'time': '10:30 – 10:45'},
-    {'title': 'Weekly product planning', 'time': '14:00 – 15:00'},
+    {'title': 'Design review', 'time': '09:30 – 10:00', 'location': 'Room 3'},
+    {'title': 'Daily team check-in', 'time': '10:30 – 10:45', 'location': 'Google Meet'},
+    {'title': 'Weekly product planning', 'time': '14:00 – 15:00', 'location': ''},
 ]
 print(json.dumps({'status': 'Inbox', 'emails': emails, 'events': events,
                   'events_label': 'Tomorrow', 'events_status': '',

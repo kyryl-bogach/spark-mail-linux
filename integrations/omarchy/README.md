@@ -21,7 +21,7 @@ Date-only all-day events keep their stated date.
 The calendar badge does not change the mail indicator.
 
 The popup shows the inbox above a calendar section.
-Emails and events share one card layout, with an icon, two text lines, and date or time metadata.
+Emails and events share one card layout, with an icon, a title, an optional second line, and date or time metadata.
 The header stays visible when the lists scroll.
 
 The popup fits its content up to 80% of the screen height, while respecting the bar and screen margins.
@@ -29,7 +29,10 @@ If the content exceeds that limit, the popup scrolls.
 The scroll bar appears only when the content exceeds the viewport.
 
 The calendar section title reads **Today**, **Tomorrow**, or the day of the first day with events.
-Each event card shows the title, time range, and calendar action as plain text.
+Each event card shows the title, time range, and location as plain text.
+Conference links show the provider name when the location contains no other text.
+If an event has no location or conference link, the card hides the second line.
+The tooltip reads **Open calendar in Spark**.
 The popup shows each sender, subject, and date as plain text.
 
 The plugin reads full email metadata through CLI JSON and elides long text only for display.

@@ -65,8 +65,23 @@ class CalendarTests(unittest.TestCase):
 
     def test_all_day_events_remain_visible_without_alert_times(self):
         result = self.view(dict(event(), all_day=True, start='2026-10-06'))
-        self.assertEqual(result['events'], [{'title': 'Design review', 'time': 'All day'}])
+        self.assertEqual(result['events'], [{'title': 'Design review', 'time': 'All day', 'location': ''}])
         self.assertEqual(result['start_times'], [])
+
+    def test_event_location_reaches_the_popup(self):
+        cases = [({'location': ' Room 3 '}, 'Room 3'),
+                 ({'location': '42 Example Street', 'conference_url': 'https://meet.google.com/abc'}, '42 Example Street'),
+                 ({'conference_url': 'https://meet.google.com/abc'}, 'Google Meet'),
+                 ({'location': 'https://us02web.zoom.us/j/123'}, 'Zoom'),
+                 ({'conference_url': 'https://teams.microsoft.com/l/meetup-join/123'}, 'Microsoft Teams'),
+                 ({'conference_url': 'https://video.example.test/123'}, 'Online meeting'),
+                 ({'conference_url': 'https://meet.google.com.example.test/123'}, 'Online meeting'),
+                 ({'location': None}, ''), ({'location': 123}, ''),
+                 ({'conference_url': 'https://[invalid'}, ''), ({}, '')]
+        for metadata, expected in cases:
+            with self.subTest(metadata=metadata):
+                result = self.view(event(**metadata))
+                self.assertEqual(result['events'][0]['location'], expected)
 
     def test_all_day_utc_midnight_is_grouped_by_local_date(self):
         rows = [event(title='Thursday meeting', start='2026-10-08T15:00:00+02:00',

@@ -214,6 +214,7 @@ Panel {
       Text {
         width: parent.width
         text: card.detailText
+        visible: text.length > 0
         textFormat: Text.PlainText
         elide: Text.ElideRight
         color: Util.alpha(card.foreground, 0.72)
@@ -425,7 +426,7 @@ Panel {
               required property var modelData
               width: content.width
               titleText: modelData.title
-              detailText: "View calendar in Spark"
+              detailText: modelData.location || ""
               metadataText: modelData.time
               iconText: "󰃭"
               tooltipText: "Open calendar in Spark"
