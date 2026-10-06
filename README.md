@@ -90,9 +90,10 @@ See [CLI maintenance](AGENTS.md#spark-cli) for agent skills and update checks.
 The optional plugin puts the unified inbox and calendar in the Omarchy bar.
 Click an email to open its thread. Click an event to open Spark's calendar.
 
-<img src="docs/screenshots/omarchy-plugin.png" alt="Spark's Omarchy popup with sample emails and calendar events" width="640">
+<img src="docs/screenshots/omarchy-plugin.png" alt="Spark's Omarchy popup with sample emails, event locations, and conference providers" width="640">
 
 - Emails and events share a card layout, with a fixed header and a popup that grows to 80% of the screen height.
+- Event cards show the location or conference provider. Events without either hide the second line.
 - The mail icon uses the theme accent when emails remain in the inbox, including read emails.
 - A separate calendar badge appears 15 minutes before an event.
 - Native reminders fire five minutes and one minute before timed events. Calendar changes update or cancel the queued reminders.
