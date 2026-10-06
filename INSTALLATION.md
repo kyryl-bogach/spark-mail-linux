@@ -48,8 +48,10 @@ root, run:
 
 The script checks dependencies, extracts the installer, verifies the
 extraction, builds the shims, patches `Foundation.dll`, and registers the
-login handler. If `winegcc` is available, it also builds the image clipboard
-converter. It stops with a clear error if a required step fails.
+login handler and the attachment associations. It also builds the optional
+image clipboard converter with `winegcc` from the bundled runtime or the system.
+If that build fails, the script warns and continues. It stops with a clear
+error if a required step fails.
 
 If you must install manually, run these commands from the repository root:
 
@@ -63,6 +65,7 @@ OUT_DIR=app ./shims/build.sh
 python3 shims/patch-foundation.py
 python3 shims/patch-iphlpapi.py
 ./install-handler.sh
+./bin/register-host-filetypes.sh
 ./run-spark.sh
 ```
 

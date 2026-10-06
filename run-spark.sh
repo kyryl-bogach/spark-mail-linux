@@ -14,8 +14,9 @@
 #   SPARK_WINE       wine binary (default: bundled runtime, else wine in PATH)
 #   SPARK_DEBUG      WINEDEBUG value
 #   SPARK_OVERRIDES  WINEDLLOVERRIDES value
-#   SPARK_EXE        Windows executable to run
+#   SPARK_EXE        Windows executable to run, as a Unix path or a C:\ path
 #   SPARK_CONTAINER  1 for Bubblewrap (default), 0 for direct Wine
+#   SPARK_IMAGE_BRIDGE  0 disables the image clipboard watcher
 set -euo pipefail
 
 root=${SPARK_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}
@@ -45,7 +46,11 @@ if [ "${SPARK_CLI:-0}" = 1 ]; then
 else
   exe=${SPARK_EXE:-$app/Spark Desktop.exe}
 fi
-[ -f "$exe" ] || { echo "error: missing $exe. Extract the installer first." >&2; exit 1; }
+# A C:\ path names a Wine tool inside the prefix, which may not exist yet.
+case $exe in
+  [A-Za-z]:\\*) ;;
+  *) [ -f "$exe" ] || { echo "error: missing $exe. Extract the installer first." >&2; exit 1; } ;;
+esac
 
 # A Spark update can replace Foundation.dll while leaving old shims beside the
 # executable. Reject any vulnerable native imports that still need redirecting.
@@ -73,15 +78,6 @@ if [ -f "$foundation" ]; then
     echo "Run: python3 $root/shims/patch-iphlpapi.py" >&2
     exit 1
   fi
-fi
-
-# Desktop-session autostart can close inherited stdio descriptors. Electron
-# reads process.stdout during startup and crashes with EBADF if it is closed.
-# Restore only missing descriptors so callers can still capture output.
-if [ "${SPARK_CLI:-0}" != 1 ]; then
-  [ -e /proc/self/fd/0 ] || exec </dev/null
-  [ -e /proc/self/fd/1 ] || exec >/dev/null
-  [ -e /proc/self/fd/2 ] || exec 2>/dev/null
 fi
 
 mkdir -p "$tmp_dir" "$home_overlay"

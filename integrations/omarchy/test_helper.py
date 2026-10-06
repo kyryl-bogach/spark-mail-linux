@@ -279,6 +279,7 @@ class OpenCalendarTests(unittest.TestCase):
         options = run.call_args.kwargs
         self.assertEqual(options['env']['SPARK_NOTIFY'], '0')
         self.assertEqual(options['env']['SPARK_CLOSE_TRAY'], '0')
+        self.assertEqual(options['env']['SPARK_IMAGE_BRIDGE'], '0')
         self.assertTrue(options['check'])
         self.assertEqual(options['timeout'], 30)
         self.assertEqual(options['stdout'], subprocess.DEVNULL)

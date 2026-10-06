@@ -34,18 +34,20 @@ Omarchy already provides the portal backend.
 After Spark's renderer is ready, the launcher hides Wine's tray window.
 It keeps `explorer.exe` active because that process manages the clipboard.
 Wine then shares copied text with the desktop clipboard through XWayland.
-On Hyprland, an optional image watcher adds the Windows `CF_DIB` format when
-the host clipboard contains only an image and Spark has focus. It handles
-PNG, JPEG, GIF, TIFF, and other images that GdkPixbuf can decode, including
-WebP. This lets Spark paste images with `Ctrl+V`. It needs `winegcc` to build,
-plus `hyprctl`, `wl-paste`, and GdkPixbuf at runtime. Existing installations can build it with
-`./bin/build-clipboard-image.sh`, then restart Spark. Clipboard selections
-with text, HTML, or file lists are left alone. Files copied from the file
-manager are exposed to Spark through Wine's `CF_HDROP`; compatible files can
-be attached with `Ctrl+V` without image conversion.
 
 The tray helper requires `xprop` and `libX11`.
 If Spark already runs, quit Spark fully and launch it again with `./run-spark.sh` to apply these changes.
+
+Spark's editor pastes images only from the Windows `CF_DIB` clipboard format, which Wine does not
+provide for Wayland images. On Hyprland, an optional watcher adds `CF_DIB` when Spark has focus and
+the clipboard holds only an image. It handles PNG, JPEG, GIF, TIFF, and other GdkPixbuf formats such as WebP.
+Clipboard selections with text, HTML, or file lists stay unchanged.
+The watcher needs `hyprctl`, `wl-paste`, and GdkPixbuf. Its converter is built with `winegcc`.
+For an existing installation, run `./bin/build-clipboard-image.sh`, then restart Spark.
+Set `SPARK_IMAGE_BRIDGE=0` to disable the watcher.
+
+Wine passes files copied in a file manager to Spark as `CF_HDROP`. Bubblewrap replaces your home
+directory with `test-home/`, so Spark cannot read a file copied from your real home directory.
 
 ## What works
 
@@ -57,9 +59,10 @@ Version 3.31.3 has passed desktop startup, notification watcher, and read-only C
 Version 3.31.4.141104 has passed desktop startup, notification watcher, and read-only CLI account checks with CLI 1.3.1.
 Version 3.31.5.141153 has passed desktop startup, notification watcher, and read-only CLI account checks with CLI 1.4.0.
 The host browser check passes, and host clipboard text matches Wine's clipboard when Spark has focus.
-PNG image paste with `Ctrl+V` passed on Hyprland after the image watcher added `CF_DIB`.
-Wine passed one file copied from the file manager to Spark as `CF_HDROP`, and Spark attached it with `Ctrl+V`.
-Its mail, calendar, attachments, notification delivery, and both message copy actions still need separate checks.
+With the image watcher, `Ctrl+V` pastes an image into a draft. Without the watcher, the image does not appear.
+DOCX, XLSX, and CSV attachments in a draft open in the host desktop applications.
+Without the fallback association, an XLSX click shows a Wine error and opens nothing.
+Its mail, calendar, received attachments, notification delivery, and both message copy actions still need separate checks.
 
 Bubblewrap contains filesystem writes but retains network and display access. It is not a security sandbox.
 If an existing Wine installation only starts with its original home and temporary directories, create an ignored
@@ -67,9 +70,8 @@ If an existing Wine installation only starts with its original home and temporar
 so an existing installation can be adopted without copying its non-relocatable Wine prefix.
 Notifications depend on Spark’s database format, which future updates can change. File dialogs use Wine’s interface.
 The installer adds fallback Wine associations for unassociated DOC, DOCX, XLS, XLSX, PPT, PPTX, ODT, ODS, ODP,
-CSV, and TSV attachments, while preserving existing Windows handlers. Registering XLSX stopped a click from closing
-Spark on the reference installation. Opening that attachment in the host default application remains unresolved.
-For existing installations, quit Spark fully and run `./bin/register-host-filetypes.sh` once.
+CSV, and TSV attachments. These open through `winebrowser.exe` and `xdg-open`. Existing Windows handlers stay unchanged.
+For an existing installation, run `./bin/register-host-filetypes.sh` once. Spark can stay open.
 The launcher disables optional PowerShell hardware probes. A PowerShell installation in a reused Wine prefix can
 otherwise open many Wine debugger dialogs; Spark continues without that diagnostic hardware metadata.
 

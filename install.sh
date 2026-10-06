@@ -127,11 +127,9 @@ done
 # --- Build, patch, register --------------------------------------------------
 
 OUT_DIR="$app" "$root/shims/build.sh"
-if command -v winegcc >/dev/null 2>&1; then
-  "$root/bin/build-clipboard-image.sh"
-else
-  echo 'warning: winegcc is unavailable; image paste support was not built.' >&2
-fi
+# Image paste is optional. Report a failed build and continue.
+"$root/bin/build-clipboard-image.sh" ||
+  echo 'warning: image paste support was not built.' >&2
 python3 "$root/shims/patch-foundation.py"
 python3 "$root/shims/patch-iphlpapi.py"
 "$root/install-handler.sh"

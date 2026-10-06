@@ -285,6 +285,25 @@ The fallback registration also covers unassociated DOC, DOCX, XLS, PPT, PPTX, OD
 these formats were selected because the reference Wine prefix had no default association for them. Their live
 attachment behavior has not been verified.
 
+On Spark 3.31.5 with Wine 11.16, the local prefix also had only a `pdffile` association.
+Without an XLSX association, a click on a draft's XLSX attachment showed a Wine error and Spark stayed open.
+With the fallback associations, DOCX, XLSX, and CSV attachments opened in the host desktop applications.
+`reg` changes made through `run-spark.sh` took effect while Spark ran, because both use the same wineserver.
+
+## Image paste
+
+On Spark 3.31.5 with Wine 11.16, `Ctrl+V` with an image on the Wayland clipboard inserted nothing.
+With the image watcher, the same paste inserted the image.
+Without Spark focus, Wine did not receive the Wayland image selection, so the watcher acts only while Spark has focus.
+
+In the first session with the watcher, Spark closed shortly after a paste.
+Spark's log stopped without an error, and the terminal output was not kept. The cause is unconfirmed.
+A later session pasted images without a crash.
+
+The first watcher started a Wine process every 0.6 seconds for an image that did not convert.
+`wl-paste --watch` reported no clipboard changes on Hyprland, so the watcher still polls.
+It now makes at most three attempts for each clipboard offer.
+
 ## Open observations
 
 These conditions were seen during a 3.30.12 install on Omarchy 4.0.3 with

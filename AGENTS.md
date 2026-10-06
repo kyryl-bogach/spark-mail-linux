@@ -25,8 +25,10 @@ Docker does not replace the host display, Wine prefix, or desktop integration in
 | `bin/spark` | Runs the bundled Windows CLI through the desktop launcher. |
 | `install-handler.sh` | Registers the app launcher and URL handler with the host desktop. |
 | `bin/register-host-filetypes.sh` | Adds fallback Wine associations for common document attachments. |
+| `bin/clipboard-image-watch.py` | Adds `CF_DIB` to image-only clipboard selections while Spark has focus. |
+| `bin/clipboard-image.c` | Wine helper that converts the clipboard image. `bin/build-clipboard-image.sh` builds it. |
 | `share/` | Contains desktop integration templates. |
-| `tests/` | Covers desktop registration, OAuth validation, and notification polling. |
+| `tests/` | Covers desktop registration, OAuth validation, notification polling, and the image watcher. |
 | `docs/investigation.md` | Records the Wine failures and the evidence for each workaround. |
 | `.githooks/pre-commit` | Blocks runtime state, proprietary binaries, and large files from commits. |
 
@@ -60,7 +62,8 @@ Spark Desktop must run, and Settings > AI Agents must permit access to the selec
 `bin/spark` resolves its real path, so a symlink in `~/.local/bin` can point to it.
 It sets `SPARK_EXE` and reuses the launcher's prefix, runtime, DLL overrides, and Bubblewrap mounts.
 It sets `SPARK_NOTIFY=0` and `SPARK_CLOSE_TRAY=0` so short CLI calls do not
-start desktop-only background helpers.
+start desktop-only background helpers. The launcher skips the image watcher for CLI calls.
+Other short launcher calls must also set `SPARK_IMAGE_BRIDGE=0`.
 
 Preserve that guard when you change the launcher.
 Do not run the CLI through a separate prefix or bypass the Foundation checks.

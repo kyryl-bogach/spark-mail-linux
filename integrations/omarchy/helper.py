@@ -215,7 +215,7 @@ def sync_reminders(now=None):
 def forward_desktop(*arguments):
     """Forward a desktop action without additional background helpers."""
     env = dict(os.environ, SPARK_ROOT=str(ROOT), SPARK_DEBUG='-all',
-               SPARK_NOTIFY='0', SPARK_CLOSE_TRAY='0')
+               SPARK_NOTIFY='0', SPARK_CLOSE_TRAY='0', SPARK_IMAGE_BRIDGE='0')
     subprocess.run([str(ROOT / 'run-spark.sh'), *arguments], env=env,
                    stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
                    stderr=subprocess.DEVNULL, check=True, timeout=30)

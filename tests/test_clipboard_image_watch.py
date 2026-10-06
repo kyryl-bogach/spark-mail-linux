@@ -20,21 +20,28 @@ class ClipboardImageWatchTests(unittest.TestCase):
             self.assertFalse(watch.spark_focused())
 
     def test_converts_supported_image_only_offers(self):
-        for mime in ('image/png', 'image/jpeg', 'image/gif', 'image/tiff'):
-            with self.subTest(mime=mime), patch.object(watch, 'output', return_value=mime + '\n'):
-                self.assertEqual(watch.image_only_mime(), mime)
-
-    def test_other_image_mime_uses_host_decoder(self):
-        with patch.object(watch, 'output', return_value='image/webp\n'):
-            self.assertEqual(watch.image_only_mime(), 'image/webp')
+        for mime in ('image/png', 'image/jpeg', 'image/gif', 'image/tiff', 'image/webp'):
+            with self.subTest(mime=mime):
+                self.assertEqual(watch.image_only_mime((mime,)), mime)
 
     def test_preserves_mixed_clipboard_offers(self):
-        with patch.object(watch, 'output', return_value='image/png\ntext/html\n'):
-            self.assertIsNone(watch.image_only_mime())
-        with patch.object(watch, 'output', return_value='image/png\nimage/bmp\n'):
-            self.assertIsNone(watch.image_only_mime())
-        with patch.object(watch, 'output', return_value='text/uri-list\n'):
-            self.assertIsNone(watch.image_only_mime())
+        self.assertIsNone(watch.image_only_mime(('image/png', 'text/html')))
+        self.assertIsNone(watch.image_only_mime(('image/png', 'image/bmp')))
+        self.assertIsNone(watch.image_only_mime(('text/uri-list',)))
+
+    def test_limits_attempts_until_the_offer_changes(self):
+        png = ('image/png',)
+        conversions, previous, attempts = 0, None, 0
+        for _ in range(10):
+            mime, attempts = watch.next_attempt(png, previous, attempts)
+            previous = png
+            conversions += mime is not None
+        self.assertEqual(conversions, watch.MAX_ATTEMPTS)
+
+        mime, attempts = watch.next_attempt(None, png, attempts)
+        self.assertIsNone(mime)
+        mime, attempts = watch.next_attempt(png, None, attempts)
+        self.assertEqual((mime, attempts), ('image/png', 1))
 
 
 if __name__ == '__main__':

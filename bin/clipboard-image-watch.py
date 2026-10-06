@@ -3,6 +3,7 @@
 
 Wine exposes images to Windows without the DIB needed by Spark's editor.
 The converter runs only when Spark has focus and one image type is offered.
+A failed conversion is retried a few times, then only after the offer changes.
 """
 
 import binascii
@@ -18,6 +19,8 @@ CONVERTER = ROOT / ".build/clipboard-image.exe.so"
 INTERVAL = 0.6
 NATIVE_MIMES = {"image/png", "image/jpeg", "image/gif", "image/tiff", "image/bmp"}
 MAX_IMAGE_BYTES = 64 * 1024 * 1024
+# XWayland can pass a new selection to Wine after the first attempt starts.
+MAX_ATTEMPTS = 3
 
 
 def output(argv: list[str]) -> str:
@@ -38,11 +41,26 @@ def spark_focused() -> bool:
     return window.get("xwayland") is True and window.get("class", "").lower() == "spark desktop.exe"
 
 
-def image_only_mime() -> str | None:
-    types = output(["wl-paste", "--list-types"]).splitlines()
+def clipboard_types() -> tuple[str, ...]:
+    return tuple(output(["wl-paste", "--list-types"]).splitlines())
+
+
+def image_only_mime(types: tuple[str, ...]) -> str | None:
     if len(types) == 1 and types[0].startswith("image/"):
         return types[0]
     return None
+
+
+def next_attempt(
+    offer: tuple[str, ...] | None, previous: tuple[str, ...] | None, attempts: int
+) -> tuple[str | None, int]:
+    """Return the image type to convert now and the updated attempt count."""
+    if offer != previous:
+        attempts = 0
+    mime = image_only_mime(offer) if offer is not None else None
+    if mime is None or attempts >= MAX_ATTEMPTS:
+        return None, attempts
+    return mime, attempts + 1
 
 
 def png_from_host(mime: str) -> tuple[bytes, list[str]] | None:
@@ -72,6 +90,22 @@ def png_from_host(mime: str) -> tuple[bytes, list[str]] | None:
         return None
 
 
+def convert(mime: str, env: dict[str, str]) -> None:
+    converted = png_from_host(mime) if mime not in NATIVE_MIMES else None
+    if mime not in NATIVE_MIMES and converted is None:
+        return
+    payload, args = converted if converted is not None else (None, [])
+    try:
+        subprocess.run(
+            [str(ROOT / "run-spark.sh"), *args], env=env, input=payload,
+            stdin=subprocess.DEVNULL if payload is None else None,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL, timeout=15, check=False,
+        )
+    except (OSError, subprocess.SubprocessError):
+        pass
+
+
 def main() -> None:
     if not CONVERTER.is_file():
         return
@@ -82,23 +116,13 @@ def main() -> None:
         SPARK_CLOSE_TRAY="0",
         SPARK_IMAGE_BRIDGE="0",
     )
+    previous, attempts = None, 0
     while True:
-        mime = image_only_mime() if spark_focused() else None
+        offer = clipboard_types() if spark_focused() else None
+        mime, attempts = next_attempt(offer, previous, attempts)
+        previous = offer
         if mime:
-            try:
-                converted = png_from_host(mime) if mime not in NATIVE_MIMES else None
-                if mime not in NATIVE_MIMES and converted is None:
-                    time.sleep(INTERVAL)
-                    continue
-                payload, args = converted if converted is not None else (None, [])
-                subprocess.run(
-                    [str(ROOT / "run-spark.sh"), *args], env=env, input=payload,
-                    stdin=subprocess.DEVNULL if payload is None else None,
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL, timeout=15, check=False,
-                )
-            except (OSError, subprocess.SubprocessError):
-                pass
+            convert(mime, env)
         time.sleep(INTERVAL)
 
 
