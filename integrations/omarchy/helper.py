@@ -68,7 +68,8 @@ def parse_events(output):
                 continue
             start = datetime.fromisoformat(row['start'])
             if row['all_day']:
-                day, start_ms, time_label = start.date(), None, 'All day'
+                day = start.astimezone().date() if start.tzinfo is not None else start.date()
+                start_ms, time_label = None, 'All day'
             else:
                 end = datetime.fromisoformat(row['end'])
                 if start.tzinfo is None or end.tzinfo is None:

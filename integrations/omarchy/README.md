@@ -16,6 +16,8 @@ The tooltip reports the remaining minutes.
 The badge clears after the event's start time.
 
 All-day events do not trigger the calendar badge.
+The plugin converts event timestamps to the local timezone before it groups events by date.
+Date-only all-day events keep their stated date.
 The calendar badge does not change the mail indicator.
 
 The popup shows the inbox above a calendar section.

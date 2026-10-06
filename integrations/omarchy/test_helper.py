@@ -68,6 +68,30 @@ class CalendarTests(unittest.TestCase):
         self.assertEqual(result['events'], [{'title': 'Design review', 'time': 'All day'}])
         self.assertEqual(result['start_times'], [])
 
+    def test_all_day_utc_midnight_is_grouped_by_local_date(self):
+        rows = [event(title='Thursday meeting', start='2026-10-08T15:00:00+02:00',
+                      end='2026-10-08T15:30:00+02:00'),
+                dict(event(title='Friday holiday'), all_day=True,
+                     start='2026-10-08T22:00:00Z', end='2026-10-09T22:00:00Z')]
+        parsed = parse_events(calendar_output(*rows))
+        self.assertEqual(parsed[1]['day'], '2026-10-09')
+        self.assertIsNone(parsed[1]['start_ms'])
+        result = calendar_view('ok', parsed, date(2026, 10, 6))
+        self.assertEqual(result['label'], 'Thursday, Oct 8')
+        self.assertEqual([row['title'] for row in result['events']], ['Thursday meeting'])
+
+    def test_all_day_dates_respect_offsets_and_preserve_date_only_values(self):
+        cases = [('2026-10-08T22:00:00Z', '2026-10-09'),
+                 ('2026-12-08T23:00:00Z', '2026-12-09'),
+                 ('2026-10-09T00:00:00+02:00', '2026-10-09'),
+                 ('2026-10-09T00:00:00+09:00', '2026-10-08'),
+                 ('2026-10-09', '2026-10-09')]
+        for start, expected in cases:
+            with self.subTest(start=start):
+                parsed = parse_events(calendar_output(dict(event(), all_day=True, start=start)))
+                self.assertEqual(parsed[0]['day'], expected)
+                self.assertIsNone(parsed[0]['start_ms'])
+
     def test_today_tomorrow_and_later_day_labels(self):
         cases = [('2026-10-06', 'Today'), ('2026-10-07', 'Tomorrow'), ('2026-10-08', 'Thursday, Oct 8')]
         for day, label in cases:
