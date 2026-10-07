@@ -26,7 +26,8 @@ Docker does not replace the host display, Wine prefix, or desktop integration in
 | `install-handler.sh` | Registers the app launcher and URL handler with the host desktop. |
 | `bin/register-host-filetypes.sh` | Adds fallback Wine associations for common document attachments. |
 | `bin/clipboard-image-watch.py` | Adds `CF_DIB` to image-only clipboard selections while Spark has focus. |
-| `bin/clipboard-image.c` | Wine helper that converts the clipboard image. `bin/build-clipboard-image.sh` builds it. |
+| `bin/clipboard-image.c` | Wine helper that converts the clipboard image. `bin/build-wine-helpers.sh` builds it. |
+| `bin/window-rescue.c` | Wine helper that moves off-screen Spark windows back into view. `bin/build-wine-helpers.sh` builds it. |
 | `share/` | Contains desktop integration templates. |
 | `tests/` | Covers desktop registration, OAuth validation, notification polling, and the image watcher. |
 | `docs/investigation.md` | Records the Wine failures and the evidence for each workaround. |

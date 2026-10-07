@@ -49,9 +49,9 @@ root, run:
 The script checks dependencies, extracts the installer, verifies the
 extraction, builds the shims, patches `Foundation.dll`, and registers the
 login handler and the attachment associations. It also builds the optional
-image clipboard converter with `winegcc` from the bundled runtime or the system.
-If that build fails, the script warns and continues. It stops with a clear
-error if a required step fails.
+image clipboard converter and the window recovery helper with `winegcc` from
+the bundled runtime or the system. If that build fails, the script warns and
+continues. It stops with a clear error if a required step fails.
 
 If you must install manually, run these commands from the repository root:
 
@@ -61,7 +61,7 @@ sudo pacman -S wine bubblewrap python python-gobject libarchive clang binutils l
 mkdir -p app
 bsdtar -xf /path/to/Spark.exe -C app
 OUT_DIR=app ./shims/build.sh
-./bin/build-clipboard-image.sh
+./bin/build-wine-helpers.sh
 python3 shims/patch-foundation.py
 python3 shims/patch-iphlpapi.py
 ./install-handler.sh

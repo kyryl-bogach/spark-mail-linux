@@ -82,6 +82,22 @@ fi
 
 mkdir -p "$tmp_dir" "$home_overlay"
 
+# Wine unmaps a visible window that lies outside its screen, for example after a
+# monitor is removed. Spark then ignores a second launch. Move such windows into
+# view before this launch forwards to the running instance.
+spark_running() {
+  local pid
+  for pid in $(pgrep -f 'Spark Desktop\.exe' || true); do
+    grep -qzxF "SPARK_ROOT=$root" "/proc/$pid/environ" 2>/dev/null && return 0
+  done
+  return 1
+}
+rescue=$root/.build/window-rescue.exe.so
+if [ -z "${SPARK_EXE:-}" ] && [ "${SPARK_CLI:-0}" != 1 ] && [ -f "$rescue" ] && spark_running; then
+  SPARK_EXE=$rescue SPARK_NOTIFY=0 SPARK_CLOSE_TRAY=0 SPARK_IMAGE_BRIDGE=0 \
+    "${BASH_SOURCE[0]}" || echo 'warning: window rescue failed.' >&2
+fi
+
 # Spark's Windows toast notifications do not render under Wine. This watcher
 # bridges new mail to notify-send. The trap covers every exit path, including
 # a nonzero wine exit under 'set -e' and an interrupt.

@@ -127,9 +127,9 @@ done
 # --- Build, patch, register --------------------------------------------------
 
 OUT_DIR="$app" "$root/shims/build.sh"
-# Image paste is optional. Report a failed build and continue.
-"$root/bin/build-clipboard-image.sh" ||
-  echo 'warning: image paste support was not built.' >&2
+# Image paste and window recovery are optional. Report a failed build and continue.
+"$root/bin/build-wine-helpers.sh" ||
+  echo 'warning: image paste and window recovery support were not built.' >&2
 python3 "$root/shims/patch-foundation.py"
 python3 "$root/shims/patch-iphlpapi.py"
 "$root/install-handler.sh"

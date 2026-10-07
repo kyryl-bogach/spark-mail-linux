@@ -304,6 +304,20 @@ The first watcher started a Wine process every 0.6 seconds for an image that did
 `wl-paste --watch` reported no clipboard changes on Hyprland, so the watcher still polls.
 It now makes at most three attempts for each clipboard offer.
 
+## Window lost after a monitor change
+
+On Spark 3.31.5 with Wine 11.16, **Open Spark** did nothing after hyprmoncfg disabled two of three monitors.
+Spark ran, but Hyprland listed no Spark client. The main X11 window had `WM_STATE` Withdrawn.
+Inside Wine, the same window was visible, not minimized, and at x=4928. Wine's virtual screen was 3840 pixels wide.
+
+Wine unmaps a visible window that lies outside its virtual screen and keeps its Windows state.
+Spark's second-instance handler calls `show()` only for a hidden window, so it did nothing.
+A `SetWindowPos` call into the primary monitor's work area made Wine map the window again.
+
+`bin/window-rescue.c` makes that call for each visible Spark frame that is on no monitor.
+`run-spark.sh` runs it before a desktop launch forwards to a running Spark instance.
+The desktop launcher, the URL handler, and the Omarchy plugin all use that path.
+
 ## Open observations
 
 These conditions were seen during a 3.30.12 install on Omarchy 4.0.3 with

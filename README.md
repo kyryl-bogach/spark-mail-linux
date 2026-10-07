@@ -43,8 +43,12 @@ provide for Wayland images. On Hyprland, an optional watcher adds `CF_DIB` when 
 the clipboard holds only an image. It handles PNG, JPEG, GIF, TIFF, and other GdkPixbuf formats such as WebP.
 Clipboard selections with text, HTML, or file lists stay unchanged.
 The watcher needs `hyprctl`, `wl-paste`, and GdkPixbuf. Its converter is built with `winegcc`.
-For an existing installation, run `./bin/build-clipboard-image.sh`, then restart Spark.
+For an existing installation, run `./bin/build-wine-helpers.sh`, then restart Spark.
 Set `SPARK_IMAGE_BRIDGE=0` to disable the watcher.
+
+If a monitor is removed, Wine can hide a Spark window that was on it. Spark keeps running without a window.
+When you launch Spark again, the launcher moves such windows onto the primary monitor before it forwards the launch.
+The same build script creates this helper. See [Window lost after a monitor change](docs/investigation.md#window-lost-after-a-monitor-change).
 
 Wine passes files copied in a file manager to Spark as `CF_HDROP`. Bubblewrap replaces your home
 directory with `test-home/`, so Spark cannot read a file copied from your real home directory.

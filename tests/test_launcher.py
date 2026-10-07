@@ -69,6 +69,35 @@ class LauncherTests(unittest.TestCase):
             self.assertEqual(calls.read_text().splitlines(),
                              [str(root / 'app' / 'Spark Desktop.exe')])
 
+    def test_rescues_windows_only_when_this_installation_runs(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = self.make_root(temporary)
+            rescue = root / '.build' / 'window-rescue.exe.so'
+            rescue.parent.mkdir()
+            rescue.touch()
+            fake_wine = root / 'fake-wine'
+            calls = root / 'calls'
+            fake_wine.write_text('#!/bin/sh\nprintf "%s\\n" "$1" >> "$CALLS"\n')
+            fake_wine.chmod(0o755)
+            environment = dict(os.environ, SPARK_ROOT=str(root), SPARK_CONTAINER='0',
+                               SPARK_NOTIFY='0', SPARK_WINE=str(fake_wine), CALLS=str(calls))
+            desktop = str(root / 'app' / 'Spark Desktop.exe')
+            for owner, expected in ((str(root / 'other'), [desktop]),
+                                    (str(root), [str(rescue), desktop])):
+                with self.subTest(owner=owner):
+                    # A process named like Spark stands in for the running instance.
+                    running = subprocess.Popen(
+                        ['bash', '-c', 'exec -a "Spark Desktop.exe" sleep 30'],
+                        env=dict(os.environ, SPARK_ROOT=owner))
+                    try:
+                        subprocess.run([ROOT / 'run-spark.sh'], env=environment,
+                                       check=True, capture_output=True)
+                    finally:
+                        running.kill()
+                        running.wait()
+                    self.assertEqual(calls.read_text().splitlines(), expected)
+                    calls.unlink()
+
     def make_root(self, temporary):
         root = Path(temporary)
         app = root / 'app'
