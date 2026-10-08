@@ -290,6 +290,59 @@ Without an XLSX association, a click on a draft's XLSX attachment showed a Wine 
 With the fallback associations, DOCX, XLSX, and CSV attachments opened in the host desktop applications.
 `reg` changes made through `run-spark.sh` took effect while Spark ran, because both use the same wineserver.
 
+## Attachment files and downloads
+
+On Pop!_OS 24.04 with COSMIC, Wine 11.16, and Spark 3.31.5, links did nothing, attachments did not open, and
+saved attachments never appeared. The host's default browser is a Flatpak, and so is its PDF handler.
+
+Wine's `xdg-open` runs inside Bubblewrap with the home overlay. For a file it looked up the host handler and
+tried to start the Flatpak there, which fails inside the container. The `host-tools/xdg-open` wrapper covered
+only `http` and `https` links and passed files to the container's `xdg-open`.
+
+The desktop portal does not help for files from inside the container. `OpenURI` rejects `file://` URLs: the
+request returned, but the `Response` signal carried code 2. `OpenFile` with a file descriptor returned code 0
+only for a file under the plain root bind. For a file under the `/tmp` bind it returned code 2, and for a file
+inside the Wine prefix no response arrived within 8 seconds while the portal logged a window it could not
+attach. Attachments live in the prefix, so this route was dropped.
+
+The user's systemd manager runs outside the container and keeps the session environment. `systemd-run --user`
+from inside the container returned in 30 ms, and the host `xdg-open` started the host image viewer on a PNG
+inside the prefix. `winebrowser.exe` converts a Windows path to a `file://` URL, so the wrapper routes those URLs
+and absolute paths to `bin/open-host-file.py`, which maps the container's `/tmp`, home overlay, and download
+mount back to host paths and starts that service with a fixed description, so the journal records no file name.
+
+Associations registered under `HKEY_CURRENT_USER\Software\Classes` were not found by Wine's `ShellExecute`
+(`ShellExecute_GetClassKey` reported no class for `.txt`). Keys under `HKEY_CLASSES_ROOT` worked, which is where
+`register-host-filetypes.sh` writes. The fallback list now includes PDF, text, image, archive, calendar, contact,
+and media types that the reference prefix did not associate.
+
+Wine links the prefix's `Downloads` folder to `$HOME/Downloads`. Inside the container that path is the home
+overlay, so downloads landed in `test-home/Downloads`. The launcher now mounts the host download directory at
+`$HOME/Downloads` inside the container. With that mount, a saved attachment appeared in the host directory.
+
+Checks on 2026-10-08 with the running app: a link clicked in a message opened the host Flatpak browser, a DOCX
+attachment opened in the host application, and an attachment saved from a message appeared in the host
+download directory. `start.exe /unix` on a PNG inside the prefix and on one under the container's `/tmp`
+opened the host image viewer, and the journal recorded only the fixed service description.
+
+### Corrections for the standard project layout
+
+The home mapping originally rewrote attachment paths under `~/Projects`, including the separately bound prefix.
+The helper now resolves symlinks and selects the longest matching mount.
+Project, app, and prefix binds retain their host paths.
+
+The transient service disables environment expansion to preserve filenames that contain `${HOME}`.
+It suppresses service output because a fixed description does not prevent handler errors from logging filenames.
+An `exec` service reports executable startup failures, while visible application behavior still requires a separate check.
+
+The association script exports the registry once and reads default values without localized query labels.
+It preserves nonempty defaults and fills missing or empty defaults.
+If export or parsing fails, it stops before import.
+
+The launcher creates missing download directories and rejects relative download paths.
+Direct Wine mode does not create directories or add mounts.
+These corrections have regression tests; a successful host viewer launch remains a separate runtime check.
+
 ## Image paste
 
 On Spark 3.31.5 with Wine 11.16, `Ctrl+V` with an image on the Wayland clipboard inserted nothing.

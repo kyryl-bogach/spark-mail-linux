@@ -88,6 +88,10 @@ Check every item. A live process alone does not prove a successful startup.
    and `mailto:` links.
 5. First launch: run `./run-spark.sh`. Confirm a visible, mapped window.
    On Hyprland, `hyprctl clients` must list the Spark window.
+6. Host integration: with Spark open, run
+   `SPARK_EXE='C:\windows\system32\start.exe' SPARK_NOTIFY=0 SPARK_CLOSE_TRAY=0 SPARK_IMAGE_BRIDGE=0 ./run-spark.sh /unix /path/to/a.png`.
+   The host image viewer opens. A file saved from Spark appears in the host
+   download directory, not under `test-home/`.
 
 Never print message content, OAuth URLs, tokens, or account details from logs
 or checks. Report only sanitized evidence.
@@ -204,6 +208,12 @@ deny that site's handler request so it is recorded as ignored instead of only
 deleted. The installer deliberately does not edit browser profiles.
 
 **Floating window in Hyprland.** See the tiling rule in step 6.
+
+**Flatpak browsers and handlers.** Applications installed as Flatpaks cannot
+start inside the Bubblewrap container. Links therefore go through the desktop
+portal, and attachments through a transient user service that runs the host
+`xdg-open`. Both start on the host. If the portal or the systemd user
+manager is missing, the helpers report an error and open nothing.
 
 **Everything lives in the repository.** The app, the Wine prefix, and the
 home overlay stay in the project directory. The only system-wide changes are

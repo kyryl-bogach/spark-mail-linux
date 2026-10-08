@@ -144,6 +144,69 @@ class LauncherTests(unittest.TestCase):
             path_index = values.index('PATH')
             self.assertEqual(values[path_index + 1], f'{root}/bin/host-tools:{environment["PATH"]}')
             self.assertEqual(values[-1], str(root / 'app' / 'Spark Desktop.exe'))
+            self.assertEqual(values[values.index('SPARK_APP') + 1], str(root / 'app'))
+
+    def test_mounts_the_host_download_directory_in_the_home_overlay(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = self.make_root(temporary)
+            fake_bin = root / 'fake-bin'
+            fake_bin.mkdir()
+            arguments = root / 'bwrap-arguments'
+            bwrap = fake_bin / 'bwrap'
+            bwrap.write_text(
+                '#!/bin/sh\nprintf "%s\\n" "$@" > "$BWRAP_ARGUMENTS"\n')
+            bwrap.chmod(0o755)
+            downloads = root / 'host-downloads'
+            downloads.mkdir()
+            home = os.environ['HOME']
+            for setting, expected in ((str(downloads), [str(downloads), f'{home}/Downloads']),
+                                      ('', None), (str(root / 'missing'), [str(root / 'missing'), f'{home}/Downloads'])):
+                with self.subTest(setting=setting):
+                    environment = dict(
+                        os.environ,
+                        BWRAP_ARGUMENTS=str(arguments),
+                        PATH=f'{fake_bin}:{os.environ["PATH"]}',
+                        SPARK_DOWNLOADS=setting,
+                        SPARK_NOTIFY='0',
+                        SPARK_ROOT=str(root),
+                        SPARK_WINE='/bin/true',
+                    )
+                    subprocess.run(
+                        [ROOT / 'run-spark.sh'], env=environment,
+                        check=True, capture_output=True, text=True)
+                    values = arguments.read_text().splitlines()
+                    overlay = values.index(str(root / 'test-home'))
+                    self.assertEqual(values[overlay - 1:overlay + 2],
+                                     ['--bind', str(root / 'test-home'), home])
+                    binds = [values[index + 1:index + 3] for index, value in enumerate(values)
+                             if value == '--bind' and values[index + 2] == f'{home}/Downloads']
+                    self.assertEqual(binds, [expected] if expected else [])
+                    if expected:
+                        self.assertTrue(Path(expected[0]).is_dir())
+                        self.assertEqual(values[overlay + 2:overlay + 5], ['--bind'] + expected)
+
+    def test_rejects_a_relative_download_directory(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = self.make_root(temporary)
+            environment = dict(os.environ, SPARK_ROOT=str(root), SPARK_WINE='/bin/true',
+                               SPARK_DOWNLOADS='relative-downloads', SPARK_NOTIFY='0',
+                               SPARK_CLOSE_TRAY='0', SPARK_IMAGE_BRIDGE='0')
+            result = subprocess.run([ROOT / 'run-spark.sh'], env=environment,
+                                    capture_output=True, text=True)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn('absolute directory', result.stderr)
+
+    def test_direct_wine_does_not_create_a_download_directory(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = self.make_root(temporary)
+            downloads = root / 'absent-downloads'
+            environment = dict(os.environ, SPARK_ROOT=str(root), SPARK_WINE='/bin/true',
+                               SPARK_DOWNLOADS=str(downloads), SPARK_CONTAINER='0',
+                               SPARK_NOTIFY='0', SPARK_CLOSE_TRAY='0', SPARK_IMAGE_BRIDGE='0')
+            result = subprocess.run([ROOT / 'run-spark.sh'], env=environment,
+                                    capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertFalse(downloads.exists())
 
     def test_direct_wine_fallback_keeps_launcher_environment(self):
         with tempfile.TemporaryDirectory() as temporary:

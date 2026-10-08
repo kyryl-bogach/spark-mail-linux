@@ -24,12 +24,15 @@ Docker does not replace the host display, Wine prefix, or desktop integration in
 | `bin/mail-notify.py` | Reads Spark's database and emits native notifications. |
 | `bin/spark` | Runs the bundled Windows CLI through the desktop launcher. |
 | `install-handler.sh` | Registers the app launcher and URL handler with the host desktop. |
-| `bin/register-host-filetypes.sh` | Adds fallback Wine associations for common document attachments. |
+| `bin/host-tools/xdg-open` | Wine's `xdg-open`: sends links and files to the host portal helpers. |
+| `bin/open-host-url.py` | Opens a web link through the portal's `OpenURI` method. |
+| `bin/open-host-file.py` | Runs the host `xdg-open` on a file through the user service manager. |
+| `bin/register-host-filetypes.sh` | Adds fallback Wine associations for common attachment types. |
 | `bin/clipboard-image-watch.py` | Adds `CF_DIB` to image-only clipboard selections while Spark has focus. |
 | `bin/clipboard-image.c` | Wine helper that converts the clipboard image. `bin/build-wine-helpers.sh` builds it. |
 | `bin/window-rescue.c` | Wine helper that moves off-screen Spark windows back into view. `bin/build-wine-helpers.sh` builds it. |
 | `share/` | Contains desktop integration templates. |
-| `tests/` | Covers desktop registration, OAuth validation, notification polling, and the image watcher. |
+| `tests/` | Covers desktop registration, OAuth validation, notification polling, the image watcher, the launcher, and the portal helpers. |
 | `docs/investigation.md` | Records the Wine failures and the evidence for each workaround. |
 | `.githooks/pre-commit` | Blocks runtime state, proprietary binaries, and large files from commits. |
 
@@ -51,6 +54,7 @@ Wine control commands must use the launcher's prefix and Bubblewrap mounts, incl
 - Do not send mail or change mailbox contents to test an update without explicit authorization.
 - Enable the repository hook with `git config core.hooksPath .githooks` when needed.
 - Stage only the files that belong to the requested change.
+- Use squash merges for pull requests.
 - Never credit an agent or assistant in commits, PR descriptions, or coauthor lines.
 - Keep `CLAUDE.md` as a relative symlink to `AGENTS.md`.
 

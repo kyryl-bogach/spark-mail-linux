@@ -28,8 +28,15 @@ application launcher and registers Spark for browser callbacks, deep links,
 and `mailto:` links with your desktop.
 
 Web links use the host desktop portal to open your default browser with its existing profile.
+Attachments open with the host's default application: the launcher's `xdg-open` wrapper asks your
+user service manager (`systemd-run --user`) to run the host `xdg-open` outside the container.
+Host file opening requires systemd 254 or later.
 This requires `python-gobject`, `xdg-desktop-portal`, and a portal backend for your desktop.
 Omarchy already provides the portal backend.
+Saved attachments land in your download directory (`xdg-user-dir DOWNLOAD`), which the launcher
+mounts into the home overlay. Set `SPARK_DOWNLOADS` in `spark.local.env` to choose another
+absolute directory, or set it empty to keep downloads inside the overlay.
+The launcher creates a missing download directory. Direct Wine mode does not add a download mount.
 
 After Spark's renderer is ready, the launcher hides Wine's tray window.
 It keeps `explorer.exe` active because that process manages the clipboard.
@@ -74,7 +81,9 @@ If an existing Wine installation only starts with its original home and temporar
 so an existing installation can be adopted without copying its non-relocatable Wine prefix.
 Notifications depend on Spark’s database format, which future updates can change. File dialogs use Wine’s interface.
 The installer adds fallback Wine associations for unassociated DOC, DOCX, XLS, XLSX, PPT, PPTX, ODT, ODS, ODP,
-CSV, and TSV attachments. These open through `winebrowser.exe` and `xdg-open`. Existing Windows handlers stay unchanged.
+CSV, and TSV attachments, and for common PDF, text, image, archive, calendar, contact, and media types.
+These open through `winebrowser.exe` and the launcher's `xdg-open` wrapper, which starts the host `xdg-open`
+through the user service manager. Existing Windows handlers stay unchanged.
 For an existing installation, run `./bin/register-host-filetypes.sh` once. Spark can stay open.
 The launcher disables optional PowerShell hardware probes. A PowerShell installation in a reused Wine prefix can
 otherwise open many Wine debugger dialogs; Spark continues without that diagnostic hardware metadata.
