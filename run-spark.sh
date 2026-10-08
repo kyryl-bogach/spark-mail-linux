@@ -17,6 +17,8 @@
 #   SPARK_EXE        Windows executable to run, as a Unix path or a C:\ path
 #   SPARK_CONTAINER  1 for Bubblewrap (default), 0 for direct Wine
 #   SPARK_IMAGE_BRIDGE  0 disables the image clipboard watcher
+#   SPARK_DOWNLOADS  host directory mounted at $HOME/Downloads inside the
+#                    container (default: the XDG download directory); empty disables
 set -euo pipefail
 
 root=${SPARK_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}
@@ -81,6 +83,23 @@ if [ -f "$foundation" ]; then
 fi
 
 mkdir -p "$tmp_dir" "$home_overlay"
+
+# Wine links the prefix's Downloads folder to $HOME/Downloads. Inside the
+# container that path lies in the home overlay, so saved attachments would
+# vanish there. Mount the host download directory at the same place.
+downloads_bind=()
+if [ "${SPARK_DOWNLOADS+set}" = set ]; then
+  downloads=$SPARK_DOWNLOADS
+else
+  downloads=$(xdg-user-dir DOWNLOAD 2>/dev/null || true)
+  [ -n "$downloads" ] && [ "$downloads" != "$HOME" ] || downloads=$HOME/Downloads
+fi
+downloads_mount=
+if [ -n "$downloads" ] && [ -d "$downloads" ]; then
+  mkdir -p "$home_overlay/Downloads"
+  downloads_bind=(--bind "$downloads" "$HOME/Downloads")
+  downloads_mount=$downloads
+fi
 
 # Wine unmaps a visible window that lies outside its screen, for example after a
 # monitor is removed. Spark then ignores a second launch. Move such windows into
@@ -162,6 +181,7 @@ else
     --dev-bind /dev /dev \
     --proc /proc \
     --bind "$home_overlay" "$HOME" \
+    "${downloads_bind[@]}" \
     --bind "$root" "$root" \
     --bind "$prefix" "$prefix" \
     --bind "$app" "$app" \
@@ -169,6 +189,9 @@ else
     --ro-bind /tmp/.X11-unix /tmp/.X11-unix \
     --setenv WINEPREFIX "$prefix" \
     --setenv SPARK_ROOT "$root" \
+    --setenv SPARK_CONTAINER_HOME "$home_overlay" \
+    --setenv SPARK_CONTAINER_TMP "$tmp_dir" \
+    --setenv SPARK_DOWNLOADS_DIR "$downloads_mount" \
     --setenv WINEDLLOVERRIDES "$overrides" \
     --setenv WINEDEBUG "$debug" \
     --setenv PATH "$wine_path" \

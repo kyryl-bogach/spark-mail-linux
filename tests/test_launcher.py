@@ -145,6 +145,44 @@ class LauncherTests(unittest.TestCase):
             self.assertEqual(values[path_index + 1], f'{root}/bin/host-tools:{environment["PATH"]}')
             self.assertEqual(values[-1], str(root / 'app' / 'Spark Desktop.exe'))
 
+    def test_mounts_the_host_download_directory_in_the_home_overlay(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = self.make_root(temporary)
+            fake_bin = root / 'fake-bin'
+            fake_bin.mkdir()
+            arguments = root / 'bwrap-arguments'
+            bwrap = fake_bin / 'bwrap'
+            bwrap.write_text(
+                '#!/bin/sh\nprintf "%s\\n" "$@" > "$BWRAP_ARGUMENTS"\n')
+            bwrap.chmod(0o755)
+            downloads = root / 'host-downloads'
+            downloads.mkdir()
+            home = os.environ['HOME']
+            for setting, expected in ((str(downloads), [str(downloads), f'{home}/Downloads']),
+                                      ('', None), (str(root / 'missing'), None)):
+                with self.subTest(setting=setting):
+                    environment = dict(
+                        os.environ,
+                        BWRAP_ARGUMENTS=str(arguments),
+                        PATH=f'{fake_bin}:{os.environ["PATH"]}',
+                        SPARK_DOWNLOADS=setting,
+                        SPARK_NOTIFY='0',
+                        SPARK_ROOT=str(root),
+                        SPARK_WINE='/bin/true',
+                    )
+                    subprocess.run(
+                        [ROOT / 'run-spark.sh'], env=environment,
+                        check=True, capture_output=True, text=True)
+                    values = arguments.read_text().splitlines()
+                    overlay = values.index(str(root / 'test-home'))
+                    self.assertEqual(values[overlay - 1:overlay + 2],
+                                     ['--bind', str(root / 'test-home'), home])
+                    binds = [values[index + 1:index + 3] for index, value in enumerate(values)
+                             if value == '--bind' and values[index + 2] == f'{home}/Downloads']
+                    self.assertEqual(binds, [expected] if expected else [])
+                    if expected:
+                        self.assertEqual(values[overlay + 2:overlay + 5], ['--bind'] + expected)
+
     def test_direct_wine_fallback_keeps_launcher_environment(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = self.make_root(temporary)
