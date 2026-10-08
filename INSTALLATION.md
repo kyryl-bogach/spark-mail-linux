@@ -89,7 +89,7 @@ Check every item. A live process alone does not prove a successful startup.
 5. First launch: run `./run-spark.sh`. Confirm a visible, mapped window.
    On Hyprland, `hyprctl clients` must list the Spark window.
 6. Host integration: with Spark open, run
-   `SPARK_EXE='C:\windows\system32\start.exe' SPARK_NOTIFY=0 ./run-spark.sh /unix /path/to/a.png`.
+   `SPARK_EXE='C:\windows\system32\start.exe' SPARK_NOTIFY=0 SPARK_CLOSE_TRAY=0 SPARK_IMAGE_BRIDGE=0 ./run-spark.sh /unix /path/to/a.png`.
    The host image viewer opens. A file saved from Spark appears in the host
    download directory, not under `test-home/`.
 

@@ -10,6 +10,7 @@ transient service, which starts outside the container with the host defaults.
 
 The launcher exports SPARK_CONTAINER_HOME, SPARK_CONTAINER_TMP, and
 SPARK_DOWNLOADS_DIR so container paths map back to host paths.
+The explicit project, app, and prefix binds retain their host paths.
 """
 import os
 import subprocess
@@ -28,25 +29,30 @@ def file_path(argument):
             parsed = urlsplit(argument)
         except ValueError:
             return None
-        if parsed.scheme.lower() != 'file' or parsed.netloc not in ('', 'localhost'):
+        if (parsed.scheme.lower() != 'file' or parsed.netloc.lower() not in ('', 'localhost')
+                or parsed.query or parsed.fragment):
             return None
         path = unquote(parsed.path)
+    if any(ord(char) < 32 or ord(char) == 127 for char in path):
+        return None
     if not path.startswith('/') or not os.path.isfile(path):
         return None
-    return path
+    return os.path.realpath(path)
 
 
 def host_path(path, environ):
     """Map a container path to the host path the launcher mounted there."""
-    home = environ.get('HOME', '')
-    mounts = []
+    path = os.path.realpath(path)
+    home = environ.get('HOME', '').rstrip('/')
+    mounts = [(environ[key], environ[key]) for key in ('SPARK_ROOT', 'WINEPREFIX', 'SPARK_APP')
+              if environ.get(key)]
     if environ.get('SPARK_CONTAINER_TMP'):
         mounts.append(('/tmp', environ['SPARK_CONTAINER_TMP']))
     if home and environ.get('SPARK_DOWNLOADS_DIR'):
         mounts.append((home + '/Downloads', environ['SPARK_DOWNLOADS_DIR']))
     if home and environ.get('SPARK_CONTAINER_HOME'):
         mounts.append((home, environ['SPARK_CONTAINER_HOME']))
-    for mount, host in mounts:
+    for mount, host in sorted(mounts, key=lambda pair: len(pair[0]), reverse=True):
         if path == mount or path.startswith(mount + '/'):
             return host + path[len(mount):]
     return path
@@ -54,10 +60,12 @@ def host_path(path, environ):
 
 def open_file(path):
     subprocess.run(
-        ['systemd-run', '--user', '--collect', '--quiet',
-         '--description=Spark host open', '--', 'xdg-open', path],
+        ['systemd-run', '--user', '--collect', '--quiet', '--service-type=exec',
+         '--expand-environment=no', '--property=StandardOutput=null',
+         '--property=StandardError=null', '--description=Spark host open',
+         '--', '/usr/bin/xdg-open', path],
         check=True, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL)
+        stderr=subprocess.DEVNULL, timeout=10)
 
 
 def main():

@@ -95,7 +95,13 @@ else
   [ -n "$downloads" ] && [ "$downloads" != "$HOME" ] || downloads=$HOME/Downloads
 fi
 downloads_mount=
-if [ -n "$downloads" ] && [ -d "$downloads" ]; then
+if [ "${SPARK_CONTAINER:-1}" != 0 ] && [ -n "$downloads" ]; then
+  case $downloads in
+    /*) ;;
+    *) echo 'error: SPARK_DOWNLOADS must be an absolute directory or empty.' >&2; exit 1 ;;
+  esac
+  mkdir -p "$downloads"
+  downloads=$(readlink -f "$downloads")
   mkdir -p "$home_overlay/Downloads"
   downloads_bind=(--bind "$downloads" "$HOME/Downloads")
   downloads_mount=$downloads
@@ -189,6 +195,7 @@ else
     --ro-bind /tmp/.X11-unix /tmp/.X11-unix \
     --setenv WINEPREFIX "$prefix" \
     --setenv SPARK_ROOT "$root" \
+    --setenv SPARK_APP "$app" \
     --setenv SPARK_CONTAINER_HOME "$home_overlay" \
     --setenv SPARK_CONTAINER_TMP "$tmp_dir" \
     --setenv SPARK_DOWNLOADS_DIR "$downloads_mount" \

@@ -70,6 +70,51 @@ class HostFileTests(unittest.TestCase):
                          '/srv/spark/test-home/Downloads/a.pdf')
         self.assertEqual(opener.host_path('/tmp/a.pdf', {'HOME': '/home/user'}), '/tmp/a.pdf')
 
+    def test_explicit_binds_under_home_keep_their_host_paths(self):
+        environ = {'HOME': '/home/user', 'SPARK_CONTAINER_HOME': '/srv/spark/test-home',
+                   'SPARK_CONTAINER_TMP': '/srv/spark/tmp',
+                   'SPARK_ROOT': '/home/user/Projects/spark',
+                   'WINEPREFIX': '/home/user/wine-prefix', 'SPARK_APP': '/home/user/spark-app'}
+        for mount in ('SPARK_ROOT', 'WINEPREFIX', 'SPARK_APP'):
+            path = environ[mount] + '/report.pdf'
+            self.assertEqual(opener.host_path(path, environ), path)
+        self.assertEqual(opener.host_path('/tmp/../home/user/report.pdf', environ),
+                         '/srv/spark/test-home/report.pdf')
+
+    def test_symlink_to_downloads_maps_to_the_download_mount(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            home = root / 'home'
+            downloads = home / 'Downloads'
+            downloads.mkdir(parents=True)
+            document = downloads / 'report.pdf'
+            document.touch()
+            link = root / 'prefix-downloads'
+            link.symlink_to(downloads, target_is_directory=True)
+            environment = {'HOME': str(home), 'SPARK_CONTAINER_HOME': '/srv/overlay',
+                           'SPARK_DOWNLOADS_DIR': '/srv/host-downloads'}
+            path = opener.file_path(str(link / 'report.pdf'))
+            self.assertEqual(opener.host_path(path, environment), '/srv/host-downloads/report.pdf')
+
+    def test_rejects_encoded_controls_and_url_suffixes(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            document = Path(temporary) / 'report\nsecret.pdf'
+            document.touch()
+            self.assertIsNone(opener.file_path(document.as_uri()))
+            for suffix in ('?query', '#fragment'):
+                self.assertIsNone(opener.file_path(document.as_uri() + suffix))
+
+    def test_service_treats_dollar_characters_literally_and_suppresses_output(self):
+        path = '/tmp/report ${HOME}.pdf'
+        with mock.patch.object(opener.subprocess, 'run') as run:
+            opener.open_file(path)
+        command = run.call_args.args[0]
+        self.assertEqual(command[-1], path)
+        self.assertIn('--expand-environment=no', command)
+        self.assertIn('--property=StandardOutput=null', command)
+        self.assertIn('--property=StandardError=null', command)
+        self.assertEqual(run.call_args.kwargs['timeout'], 10)
+
     def test_starts_the_host_xdg_open_through_the_user_manager(self):
         with tempfile.TemporaryDirectory(prefix='spark file ') as temporary:
             root = Path(temporary)
@@ -95,8 +140,10 @@ class HostFileTests(unittest.TestCase):
             if expected.startswith('/tmp/'):
                 expected = '/srv/spark/tmp' + expected[len('/tmp'):]
             self.assertEqual(calls.read_text().splitlines(),
-                             ['--user', '--collect', '--quiet', '--description=Spark host open',
-                              '--', 'xdg-open', expected])
+                             ['--user', '--collect', '--quiet', '--service-type=exec',
+                              '--expand-environment=no', '--property=StandardOutput=null',
+                              '--property=StandardError=null', '--description=Spark host open',
+                              '--', '/usr/bin/xdg-open', expected])
 
     def test_errors_do_not_expose_the_path(self):
         with tempfile.TemporaryDirectory(prefix='spark file ') as temporary:

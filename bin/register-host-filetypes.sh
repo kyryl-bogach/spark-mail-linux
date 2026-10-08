@@ -19,28 +19,21 @@ wine_tool() {
 }
 
 mkdir -p "$root/tmp"
-registry_file=$(mktemp "$root/tmp/host-filetypes.XXXXXXXX.reg")
-trap 'rm -f "$registry_file"' EXIT
+stage=$(mktemp -d "$root/tmp/host-filetypes.XXXXXXXX")
+trap 'rm -rf "$stage"' EXIT
+registry_file=$stage/fallback.reg
+existing=$stage/existing.reg
 cat "$root/share/host-filetypes.reg" > "$registry_file"
 
-# Preserve Windows applications already installed in this prefix. Register
-# only types that have no default Wine association. One listing of HKCR
-# replaces a reg.exe query per extension.
-existing=$(wine_tool 'C:\windows\system32\reg.exe' query 'HKCR' </dev/null 2>/dev/null | tr -d '\r' || true)
-has_association() {
-  printf '%s\n' "$existing" | grep -qiE "^HKEY_CLASSES_ROOT\\\\\.$1\$"
-}
-register() {
-  local class=$1 filetype extension mime_type
-  shift
-  for filetype in "$@"; do
-    extension=${filetype%%:*}
-    mime_type=${filetype#*:}
-    has_association "$extension" && continue
-    printf '\n[HKEY_CLASSES_ROOT\\.%s]\n@="%s"\n"Content Type"="%s"\n' \
-      "$extension" "$class" "$mime_type" >> "$registry_file"
-  done
-}
+# Export once to read default values without localized query labels.
+if ! windows_stage=$(wine_tool 'C:\windows\system32\winepath.exe' -w "$stage" </dev/null 2>/dev/null | tr -d '\r') || [ -z "$windows_stage" ]; then
+  echo 'error: cannot resolve the registry export path. No associations were changed.' >&2
+  exit 1
+fi
+if ! wine_tool 'C:\windows\system32\reg.exe' export HKCR "$windows_stage\\existing.reg" /y </dev/null >/dev/null 2>&1; then
+  echo 'error: cannot read Wine file associations. No associations were changed.' >&2
+  exit 1
+fi
 office_types=(
   'doc:application/msword'
   'docx:application/vnd.openxmlformats-officedocument.wordprocessingml.document'
@@ -86,7 +79,33 @@ document_types=(
   'mp4:video/mp4'
   'mov:video/quicktime'
 )
-register sparkhostofficefile "${office_types[@]}"
-register sparkhostfile "${document_types[@]}"
+python3 - "$existing" "$registry_file" "${office_types[@]}" -- "${document_types[@]}" <<'PYTHON'
+from pathlib import Path
+import re
+import sys
+
+raw = Path(sys.argv[1]).read_bytes()
+text = raw.decode('utf-16' if raw.startswith(b'\xff\xfe') else 'utf-8-sig')
+if not text.startswith(('Windows Registry Editor Version 5.00', 'REGEDIT4')):
+    raise SystemExit('error: unsupported registry export. No associations were changed.')
+associated = set()
+extension = None
+for line in text.splitlines():
+    if line.startswith('['):
+        match = re.fullmatch(r'\[HKEY_CLASSES_ROOT\\\.([^\\]+)\]', line, re.IGNORECASE)
+        extension = match[1].lower() if match else None
+    elif extension and line.startswith('@=') and line[2:].strip() not in ('""', '-'):
+        associated.add(extension)
+
+types = sys.argv[3:]
+separator = types.index('--')
+with Path(sys.argv[2]).open('a') as output:
+    for handler, entries in (('sparkhostofficefile', types[:separator]),
+                             ('sparkhostfile', types[separator + 1:])):
+        for entry in entries:
+            extension, mime = entry.split(':', 1)
+            if extension not in associated:
+                output.write(f'\n[HKEY_CLASSES_ROOT\\.{extension}]\n@="{handler}"\n"Content Type"="{mime}"\n')
+PYTHON
 
 wine_tool 'C:\windows\regedit.exe' /S "$registry_file" </dev/null

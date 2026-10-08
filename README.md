@@ -30,11 +30,13 @@ and `mailto:` links with your desktop.
 Web links use the host desktop portal to open your default browser with its existing profile.
 Attachments open with the host's default application: the launcher's `xdg-open` wrapper asks your
 user service manager (`systemd-run --user`) to run the host `xdg-open` outside the container.
+Host file opening requires systemd 254 or later.
 This requires `python-gobject`, `xdg-desktop-portal`, and a portal backend for your desktop.
 Omarchy already provides the portal backend.
 Saved attachments land in your download directory (`xdg-user-dir DOWNLOAD`), which the launcher
 mounts into the home overlay. Set `SPARK_DOWNLOADS` in `spark.local.env` to choose another
-directory, or set it empty to keep downloads inside the overlay.
+absolute directory, or set it empty to keep downloads inside the overlay.
+The launcher creates a missing download directory. Direct Wine mode does not add a download mount.
 
 After Spark's renderer is ready, the launcher hides Wine's tray window.
 It keeps `explorer.exe` active because that process manages the clipboard.

@@ -325,6 +325,24 @@ attachment opened in the host application, and an attachment saved from a messag
 download directory. `start.exe /unix` on a PNG inside the prefix and on one under the container's `/tmp`
 opened the host image viewer, and the journal recorded only the fixed service description.
 
+### Corrections for the standard project layout
+
+The home mapping originally rewrote attachment paths under `~/Projects`, including the separately bound prefix.
+The helper now resolves symlinks and selects the longest matching mount.
+Project, app, and prefix binds retain their host paths.
+
+The transient service disables environment expansion to preserve filenames that contain `${HOME}`.
+It suppresses service output because a fixed description does not prevent handler errors from logging filenames.
+An `exec` service reports executable startup failures, while visible application behavior still requires a separate check.
+
+The association script exports the registry once and reads default values without localized query labels.
+It preserves nonempty defaults and fills missing or empty defaults.
+If export or parsing fails, it stops before import.
+
+The launcher creates missing download directories and rejects relative download paths.
+Direct Wine mode does not create directories or add mounts.
+These corrections have regression tests; a successful host viewer launch remains a separate runtime check.
+
 ## Image paste
 
 On Spark 3.31.5 with Wine 11.16, `Ctrl+V` with an image on the Wayland clipboard inserted nothing.
