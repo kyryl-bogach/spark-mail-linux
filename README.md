@@ -166,7 +166,7 @@ The procedure includes rollback steps and keeps your existing account state.
 ## Work on this project
 
 Read [AGENTS.md](AGENTS.md) for the project map, work rules, and maintenance procedures.
-`CLAUDE.md` links to the same file. Both people and coding tools use one set of instructions.
+Both people and coding tools use this one set of instructions.
 
 Enable the commit guard:
 

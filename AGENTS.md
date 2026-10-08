@@ -56,7 +56,6 @@ Wine control commands must use the launcher's prefix and Bubblewrap mounts, incl
 - Stage only the files that belong to the requested change.
 - Use squash merges for pull requests.
 - Never credit an agent or assistant in commits, PR descriptions, or coauthor lines.
-- Keep `CLAUDE.md` as a relative symlink to `AGENTS.md`.
 
 ## Spark CLI
 
