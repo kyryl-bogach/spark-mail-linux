@@ -84,6 +84,15 @@ fi
 
 mkdir -p "$tmp_dir" "$home_overlay"
 
+# GNOME Shell starts applications with stdout and stderr connected to the
+# journal through a socket. Wine cannot present a socket as a standard
+# handle, so Electron's main process fails with "open EBADF" as soon as it
+# touches process.stdout. Send a desktop launch's output to a file instead.
+# CLI calls and Wine tools keep their streams, because callers read them.
+if [ -z "${SPARK_EXE:-}" ] && [ "${SPARK_CLI:-0}" != 1 ] && { [ -S /dev/fd/1 ] || [ -S /dev/fd/2 ]; }; then
+  exec </dev/null >"$tmp_dir/launch.log" 2>&1
+fi
+
 # Wine links the prefix's Downloads folder to $HOME/Downloads. Inside the
 # container that path lies in the home overlay, so saved attachments would
 # vanish there. Mount the host download directory at the same place.

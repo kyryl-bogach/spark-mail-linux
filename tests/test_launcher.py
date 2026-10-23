@@ -208,6 +208,49 @@ class LauncherTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertFalse(downloads.exists())
 
+    def test_desktop_launch_moves_socket_stdio_to_a_log_file(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = self.make_root(temporary)
+            fake_wine = root / 'fake-wine'
+            fake_wine.write_text(
+                '#!/bin/sh\ntarget=$(readlink /proc/$$/fd/1)\nprintf "%s\\n" "$target" > "$RESULT_FILE"\necho wine-output\n')
+            fake_wine.chmod(0o755)
+            result_file = root / 'stdout-target'
+            environment = dict(os.environ, RESULT_FILE=str(result_file), SPARK_CONTAINER='0',
+                               SPARK_NOTIFY='0', SPARK_CLOSE_TRAY='0', SPARK_IMAGE_BRIDGE='0',
+                               SPARK_ROOT=str(root), SPARK_WINE=str(fake_wine))
+            import socket
+            for name, desktop, use_socket in (('desktop', True, True), ('cli', False, True),
+                                              ('desktop-pipe', True, False)):
+                with self.subTest(name=name):
+                    env = dict(environment)
+                    if not desktop:
+                        env['SPARK_EXE'] = 'C:\\windows\\system32\\reg.exe'
+                    if use_socket:
+                        ours, theirs = socket.socketpair()
+                        stdout = theirs.fileno()
+                    else:
+                        ours = theirs = None
+                        stdout = subprocess.PIPE
+                    completed = subprocess.run([ROOT / 'run-spark.sh'], env=env, stdin=subprocess.DEVNULL,
+                                               stdout=stdout, stderr=subprocess.STDOUT, text=not use_socket)
+                    if theirs is not None:
+                        theirs.close()
+                        received = ours.recv(4096)
+                        ours.close()
+                    self.assertEqual(completed.returncode, 0)
+                    target = result_file.read_text().strip()
+                    if desktop and use_socket:
+                        self.assertEqual(target, str(root / 'tmp' / 'launch.log'))
+                        self.assertEqual(received, b'')
+                        self.assertIn('wine-output', (root / 'tmp' / 'launch.log').read_text())
+                    elif use_socket:
+                        self.assertTrue(target.startswith('socket:'), target)
+                        self.assertIn(b'wine-output', received)
+                    else:
+                        self.assertTrue(target.startswith('pipe:'), target)
+                        self.assertIn('wine-output', completed.stdout)
+
     def test_direct_wine_fallback_keeps_launcher_environment(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = self.make_root(temporary)

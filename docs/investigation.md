@@ -371,6 +371,22 @@ A `SetWindowPos` call into the primary monitor's work area made Wine map the win
 `run-spark.sh` runs it before a desktop launch forwards to a running Spark instance.
 The desktop launcher, the URL handler, and the Omarchy plugin all use that path.
 
+## Journal sockets as standard output
+
+On GNOME (X11 session) with Wine 11.16 and Spark 3.32.0, every launch from the Shell's application grid
+showed "A JavaScript error occurred in the main process" with `Error: open EBADF at new Socket (node:net)` from
+`process.getStdout`. Spark's main window never mapped and its log received nothing. A launch from a terminal, or
+through `gtk-launch` with `/dev/null` on stdout, worked.
+
+The process GNOME started had `socket:[...]` on file descriptors 1 and 2: the Shell logs application output to
+the journal through a stream socket with the desktop entry as identifier. Wine inherits the descriptors but
+cannot present a socket as a standard handle, so Node's stdout initialisation fails. `systemd-cat`, which
+connects stdio to the journal the same way, reproduces the condition.
+
+The launcher now checks a desktop launch for socket stdio and redirects it to `tmp/launch.log`, truncated at
+each launch. CLI calls and Wine tools keep their streams because callers read them. With that change, the
+`systemd-cat` launch mapped the main window in 14 seconds with no dialog.
+
 ## Open observations
 
 These conditions were seen during a 3.30.12 install on Omarchy 4.0.3 with
