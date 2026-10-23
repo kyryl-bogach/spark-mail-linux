@@ -373,19 +373,25 @@ The desktop launcher, the URL handler, and the Omarchy plugin all use that path.
 
 ## Journal sockets as standard output
 
-On GNOME (X11 session) with Wine 11.16 and Spark 3.32.0, every launch from the Shell's application grid
-showed "A JavaScript error occurred in the main process" with `Error: open EBADF at new Socket (node:net)` from
-`process.getStdout`. Spark's main window never mapped and its log received nothing. A launch from a terminal, or
-through `gtk-launch` with `/dev/null` on stdout, worked.
+On GNOME with X11, Wine 11.16, and Spark 3.32.0, every launch from the Shell's application grid showed a JavaScript error.
+The error was `Error: open EBADF at new Socket (node:net)` from `process.getStdout`.
+Spark's main window never mapped and its log received nothing.
 
-The process GNOME started had `socket:[...]` on file descriptors 1 and 2: the Shell logs application output to
-the journal through a stream socket with the desktop entry as identifier. Wine inherits the descriptors but
-cannot present a socket as a standard handle, so Node's stdout initialisation fails. `systemd-cat`, which
-connects stdio to the journal the same way, reproduces the condition.
+A launch from a terminal worked, as did `gtk-launch` with `/dev/null` on stdout.
+The process GNOME started had `socket:[...]` on file descriptors 1 and 2.
+The Shell sends application output to the journal through a stream socket with the desktop entry as identifier.
 
-The launcher now checks a desktop launch for socket stdio and redirects it to `tmp/launch.log`, truncated at
-each launch. CLI calls and Wine tools keep their streams because callers read them. With that change, the
-`systemd-cat` launch mapped the main window in 14 seconds with no dialog.
+Under Wine, Node's stdout initialization fails with that socket.
+`systemd-cat`, which connects stdio to the journal the same way, reproduces the condition.
+Native Windows writes through a socket work in a probe with Wine 11.16, so the evidence concerns Electron's stream initialization.
+
+The launcher detects socket stdio on a desktop launch and redirects output to `tmp/launch.log`.
+Each socket launch truncates that file.
+CLI calls and Wine tools keep their streams because callers read them.
+
+With that change, the `systemd-cat` launch mapped the main window in 14 seconds with no dialog.
+On Omarchy, Spark's embedded Electron runtime also passes socket checks through the launcher with the existing Wine prefix and Bubblewrap mounts.
+Piped output still produces `EBADF` on that host, both before and after this change.
 
 ## Open observations
 

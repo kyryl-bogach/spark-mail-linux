@@ -217,10 +217,11 @@ manager is missing, the helpers report an error and open nothing.
 
 **JavaScript error in the main process at launch.** GNOME Shell starts
 applications with stdout and stderr connected to the journal through a
-socket. Wine cannot present a socket as a standard handle, and Electron
-fails with `open EBADF` as soon as it touches `process.stdout`. The launcher
-detects socket stdio on a desktop launch and writes the output to
-`tmp/launch.log` instead. Read that file when a launch misbehaves.
+socket. Under Wine, Electron fails with `open EBADF` when it initializes
+`process.stdout` with that socket.
+
+The launcher detects socket stdio on a desktop launch and writes the output
+to `tmp/launch.log` instead. Read that file when a launch misbehaves.
 
 **Everything lives in the repository.** The app, the Wine prefix, and the
 home overlay stay in the project directory. The only system-wide changes are

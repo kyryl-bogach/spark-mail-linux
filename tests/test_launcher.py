@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+import socket
 import subprocess
 import tempfile
 import unittest
@@ -211,45 +212,53 @@ class LauncherTests(unittest.TestCase):
     def test_desktop_launch_moves_socket_stdio_to_a_log_file(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = self.make_root(temporary)
+            next(root.glob('app/**/Foundation.dll')).with_name('spark.exe').touch()
             fake_wine = root / 'fake-wine'
             fake_wine.write_text(
-                '#!/bin/sh\ntarget=$(readlink /proc/$$/fd/1)\nprintf "%s\\n" "$target" > "$RESULT_FILE"\necho wine-output\n')
+                '#!/bin/sh\n'
+                'stdout=$(readlink /proc/$$/fd/1)\nstderr=$(readlink /proc/$$/fd/2)\n'
+                'printf "%s\\n" "$stdout" "$stderr" > "$RESULT_FILE"\n'
+                'echo wine-output\necho wine-error >&2\n')
             fake_wine.chmod(0o755)
             result_file = root / 'stdout-target'
             environment = dict(os.environ, RESULT_FILE=str(result_file), SPARK_CONTAINER='0',
                                SPARK_NOTIFY='0', SPARK_CLOSE_TRAY='0', SPARK_IMAGE_BRIDGE='0',
                                SPARK_ROOT=str(root), SPARK_WINE=str(fake_wine))
-            import socket
-            for name, desktop, use_socket in (('desktop', True, True), ('cli', False, True),
-                                              ('desktop-pipe', True, False)):
+            for name, overrides, socket_fds in (
+                    ('desktop-stdout', {}, (1,)),
+                    ('desktop-stderr', {}, (2,)),
+                    ('desktop-both', {}, (1, 2)),
+                    ('cli', {'SPARK_CLI': '1'}, (1, 2)),
+                    ('wine-tool', {'SPARK_EXE': 'C:\\windows\\system32\\reg.exe'}, (1, 2)),
+                    ('desktop-pipe', {}, ())):
                 with self.subTest(name=name):
-                    env = dict(environment)
-                    if not desktop:
-                        env['SPARK_EXE'] = 'C:\\windows\\system32\\reg.exe'
-                    if use_socket:
-                        ours, theirs = socket.socketpair()
-                        stdout = theirs.fileno()
-                    else:
-                        ours = theirs = None
-                        stdout = subprocess.PIPE
-                    completed = subprocess.run([ROOT / 'run-spark.sh'], env=env, stdin=subprocess.DEVNULL,
-                                               stdout=stdout, stderr=subprocess.STDOUT, text=not use_socket)
-                    if theirs is not None:
+                    ours, theirs = socket.socketpair()
+                    with ours, theirs:
+                        ours.settimeout(5)
+                        completed = subprocess.run(
+                            [ROOT / 'run-spark.sh'], env=dict(environment, **overrides),
+                            stdin=subprocess.DEVNULL,
+                            stdout=theirs if 1 in socket_fds else subprocess.PIPE,
+                            stderr=theirs if 2 in socket_fds else subprocess.PIPE,
+                            text=True, timeout=10)
                         theirs.close()
-                        received = ours.recv(4096)
-                        ours.close()
-                    self.assertEqual(completed.returncode, 0)
-                    target = result_file.read_text().strip()
-                    if desktop and use_socket:
-                        self.assertEqual(target, str(root / 'tmp' / 'launch.log'))
-                        self.assertEqual(received, b'')
-                        self.assertIn('wine-output', (root / 'tmp' / 'launch.log').read_text())
-                    elif use_socket:
-                        self.assertTrue(target.startswith('socket:'), target)
-                        self.assertIn(b'wine-output', received)
+                        with ours.makefile('r') as stream:
+                            received = stream.read()
+                    self.assertEqual(completed.returncode, 0, completed.stderr)
+                    targets = result_file.read_text().splitlines()
+                    self.assertEqual(len(targets), 2)
+                    if not overrides and socket_fds:
+                        log = root / 'tmp' / 'launch.log'
+                        self.assertEqual(targets, [str(log), str(log)])
+                        self.assertEqual(received, '')
+                        self.assertIn('wine-output', log.read_text())
+                        self.assertIn('wine-error', log.read_text())
                     else:
-                        self.assertTrue(target.startswith('pipe:'), target)
-                        self.assertIn('wine-output', completed.stdout)
+                        for fd, target in enumerate(targets, start=1):
+                            expected = 'socket:' if fd in socket_fds else 'pipe:'
+                            self.assertTrue(target.startswith(expected), target)
+                        self.assertIn('wine-output', received if 1 in socket_fds else completed.stdout)
+                        self.assertIn('wine-error', received if 2 in socket_fds else completed.stderr)
 
     def test_direct_wine_fallback_keeps_launcher_environment(self):
         with tempfile.TemporaryDirectory() as temporary:
