@@ -6,7 +6,7 @@ Run [Spark Mail](https://sparkmailapp.com/) for Windows on Linux with Wine.
 Two small DLL shims prevent known crashes. Scripts handle launch, browser login, and native notifications.
 
 - **Unofficial.** Readdle does not support this project.
-- **Verified:** Spark 3.32.1.141358 starts on Arch Linux with Wine 11.16.
+- **Verified:** Spark 3.32.2.141404 starts on Arch Linux with Wine 11.16.
 - **CLI:** The bundled Windows CLI works through [bin/spark](bin/spark). Spark Desktop must remain open.
 - **Updates:** Follow the [update procedure](AGENTS.md#update-spark), not Spark’s update button.
 
@@ -73,6 +73,10 @@ Version 3.31.6.141244 has passed desktop startup, notification watcher, and read
 Version 3.32.0.141284 has passed desktop startup, notification watcher, and read-only CLI account checks with CLI 1.4.0.
 
 Version 3.32.1.141358 passes desktop startup checks, loads SparkCore, and keeps the notification watcher active.
+CLI 1.4.1 passes help, version, and read-only account checks against the existing account state.
+Mail, calendar, attachment, and notification delivery checks remain unverified for this version.
+
+Version 3.32.2.141404 passes desktop startup checks, loads SparkCore, and keeps the notification watcher active.
 CLI 1.4.1 passes help, version, and read-only account checks against the existing account state.
 Mail, calendar, attachment, and notification delivery checks remain unverified for this version.
 
