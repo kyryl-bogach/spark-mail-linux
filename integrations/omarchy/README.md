@@ -98,14 +98,14 @@ If no window matches, it calls `run-spark.sh` and waits for the new window.
 
 ## Spark updates
 
-The popup shows **Update Spark to VERSION…** only when the official feed reports a newer release.
-It hides the action if Spark is current or the check fails.
-Checks run at startup, every six hours, and when the popup opens after an hour without a check.
-Update checks run separately from mailbox queries and do not require Spark to run.
+The popup always shows a small refresh icon beside **Open Spark**.
+Click it to check for updates and install a newer release through the repository updater.
+The plugin makes no background update checks and does not cache release availability.
 
-Click the action to open the repository updater in a terminal through `xdg-terminal-exec`.
+The action opens a terminal through `xdg-terminal-exec`.
 The terminal shows progress and waits for Enter before it closes.
-The updater backs up the stopped installation and restarts Spark through its existing launcher.
+If Spark is current, the updater exits without a restart.
+If a newer release exists, the updater backs up the stopped installation and restarts Spark through its existing launcher.
 The plugin pauses mailbox queries during an update and preserves queued calendar reminders.
 See [the update guide](../../README.md#update) for requirements and recovery.
 
@@ -173,9 +173,6 @@ Run the screenshot fixture from the repository root:
 ```bash
 python3 integrations/omarchy/preview/render.py
 ```
-
-Use `python3 integrations/omarchy/preview/render.py --update` to capture the pending update action separately.
-It writes `docs/screenshots/omarchy-plugin-update.png`.
 
 The fixture renders the current widget and Omarchy's notification cards with sample data.
 Its mock helper cannot invoke Spark, Wine, or the reminder scheduler.

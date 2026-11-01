@@ -438,6 +438,6 @@ After a grace period, it sends SIGTERM only to verified remaining processes for 
 If processes remain, it aborts before the backup or replacement.
 
 The Omarchy action opens the same command in a terminal.
-The screenshot fixture covers the pending action with sample data and no mailbox access.
+The screenshot fixture covers the update icon with sample data and no mailbox access.
 The fixture requires an explicit `Commons.Color` import because an unqualified QML color name resolves incorrectly on this system.
 Mail, calendar, attachment, and notification delivery checks remain separate.

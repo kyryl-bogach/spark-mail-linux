@@ -352,20 +352,6 @@ class FocusTests(unittest.TestCase):
 
 
 class UpdateTests(unittest.TestCase):
-    @mock.patch('helper.update_busy', return_value=False)
-    @mock.patch('helper.subprocess.run')
-    def test_update_check_reports_pending_and_current_versions(self, run, busy):
-        from helper import update_check
-        for available in (True, False):
-            run.return_value = mock.Mock(stdout=json.dumps({'available': available, 'version': '3.32.3.141500'}))
-            self.assertEqual(update_check()['available'], available)
-
-    @mock.patch('helper.update_busy', return_value=False)
-    @mock.patch('helper.subprocess.run', side_effect=subprocess.TimeoutExpired('check', 45))
-    def test_failed_check_hides_update_action(self, run, busy):
-        from helper import update_check
-        self.assertFalse(update_check()['available'])
-
     @mock.patch('helper.update_busy', return_value=True)
     @mock.patch('helper.run_cli')
     def test_update_pauses_mailbox_reads(self, cli, busy):

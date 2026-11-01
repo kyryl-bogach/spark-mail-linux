@@ -99,7 +99,7 @@ Do not use Spark's update button or run the Windows installer directly.
 
 Use `./update-spark.sh` for routine updates of the repository installation on Hyprland.
 Use `./update-spark.sh --check` for a read-only JSON result.
-The Omarchy popup exposes the updater only when a newer version is available.
+The Omarchy popup always exposes the updater through a refresh icon beside **Open Spark**.
 The script uses the official Windows appcast for the installer URL and cross-checks the version against the release notes.
 The release notes can contain an incorrect DMG link. Never derive a Windows URL from that link.
 The appcast supplies the Windows installer URL directly.

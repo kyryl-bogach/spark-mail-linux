@@ -12,9 +12,6 @@ Panel {
   manageIpc: false
   implicitWidth: button.implicitWidth
   implicitHeight: button.implicitHeight
-  property bool updateAvailable: false
-  property string updateVersion: ""
-  property double lastUpdateCheck: 0
   property var emails: []
   property string status: "Read the inbox..."
   property var events: []
@@ -50,20 +47,12 @@ Panel {
     fetch.command = ["python3", root.helper, "list", root.calendarRemindersEnabled ? "--reminders" : "--no-reminders"]
     fetch.running = true
   }
-  function checkUpdate() {
-    if (updateCheck.running || Date.now() - lastUpdateCheck < 3600000) return
-    lastUpdateCheck = Date.now()
-    updateCheck.running = true
-  }
   function runUpdate() {
     if (updateLaunch.running) return
-    updateAvailable = false
-    lastUpdateCheck = 0
     updateLaunch.running = true
     close()
   }
   function open() {
-    checkUpdate()
     controller.show()
     refresh()
   }
@@ -83,35 +72,11 @@ Panel {
   }
 
   Process {
-    id: updateCheck
-    command: ["python3", root.helper, "update-check"]
-    stdout: StdioCollector {
-      onStreamFinished: {
-        root.updateAvailable = false
-        try {
-          var result = JSON.parse(text)
-          root.updateAvailable = result.available === true
-          root.updateVersion = result.version || ""
-        } catch (error) {}
-      }
-    }
-    onExited: function(code) { if (code !== 0) root.updateAvailable = false }
-  }
-  Process {
     id: updateLaunch
     command: ["python3", root.helper, "update"]
     onExited: function(code) {
-      root.lastUpdateCheck = 0
-      root.checkUpdate()
       if (code !== 0) { root.status = "Cannot open the update terminal"; root.controller.show() }
     }
-  }
-  Timer {
-    interval: 21600000
-    running: true
-    repeat: true
-    triggeredOnStart: true
-    onTriggered: root.checkUpdate()
   }
   Process {
     id: fetch
@@ -344,11 +309,11 @@ Panel {
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.top: parent.top
-        height: Math.max(heading.implicitHeight, openButton.implicitHeight) + Style.space(8)
+        height: Math.max(heading.implicitHeight, headerActions.height) + Style.space(8)
         Column {
           id: heading
           anchors.left: parent.left
-          anchors.right: openButton.left
+          anchors.right: headerActions.left
           anchors.rightMargin: Style.space(16)
           anchors.verticalCenter: parent.verticalCenter
           spacing: Style.space(4)
@@ -369,16 +334,31 @@ Panel {
             font.pixelSize: Style.font.caption
           }
         }
-        Button {
-          id: openButton
+        Row {
+          id: headerActions
           anchors.right: parent.right
           anchors.verticalCenter: parent.verticalCenter
-          text: "Open Spark ↗"
-          foreground: Commons.Color.accent
-          fontFamily: headerTitle.font.family
-          fontSize: Style.font.bodySmall
-          bordered: true
-          onClicked: root.openSpark()
+          spacing: Style.space(8)
+          Button {
+            id: updateAction
+            anchors.verticalCenter: parent.verticalCenter
+            iconText: "\uf021"
+            iconSize: Style.font.bodySmall
+            horizontalPadding: Style.space(8)
+            tooltipText: "Check for updates and update Spark"
+            foreground: Commons.Color.accent
+            enabled: !updateLaunch.running
+            onClicked: root.runUpdate()
+          }
+          Button {
+            id: openButton
+            text: "Open Spark ↗"
+            foreground: Commons.Color.accent
+            fontFamily: headerTitle.font.family
+            fontSize: Style.font.bodySmall
+            bordered: true
+            onClicked: root.openSpark()
+          }
         }
       }
       Flickable {
@@ -410,17 +390,6 @@ Panel {
           id: content
           width: flick.width - (scrollBar.visible ? Style.space(10) : 0)
           spacing: Style.spacing.rowGap
-          Button {
-            id: updateAction
-            visible: root.updateAvailable
-            width: parent.width
-            text: "Update Spark to " + root.updateVersion + "…"
-            fontFamily: headerTitle.font.family
-            fontSize: Style.font.bodySmall
-            foreground: Commons.Color.accent
-            bordered: true
-            onClicked: root.runUpdate()
-          }
           SectionHeader {
             width: parent.width
             label: "Inbox"

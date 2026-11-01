@@ -27,17 +27,6 @@ def update_busy():
     return False
 
 
-def update_check():
-    if update_busy():
-        return {'available': False}
-    try:
-        result = subprocess.run([str(ROOT / 'update-spark.sh'), '--check'],
-                                capture_output=True, text=True, check=True, timeout=45)
-        return json.loads(result.stdout)
-    except (OSError, ValueError, subprocess.SubprocessError):
-        return {'available': False}
-
-
 def open_update():
     # Pass the repository path as an argument, never as shell source.
     subprocess.run(['xdg-terminal-exec', '--title=Spark update', '-e', 'bash', '-c',
@@ -335,9 +324,7 @@ def open_calendar():
 
 if __name__ == '__main__':
     try:
-        if sys.argv[1:] == ['update-check']:
-            print(json.dumps(update_check()))
-        elif sys.argv[1:] == ['update']:
+        if sys.argv[1:] == ['update']:
             open_update()
         elif sys.argv[1:] == ['open']:
             open_spark()
@@ -354,7 +341,7 @@ if __name__ == '__main__':
             enabled = None if len(sys.argv) == 2 else sys.argv[2] == '--reminders'
             print(json.dumps(overview(enabled)))
         else:
-            sys.exit('usage: helper.py list [--reminders|--no-reminders]|open|open-calendar|open-email <id>|reminders-sync|reminders-clear')
+            sys.exit('usage: helper.py list [--reminders|--no-reminders]|open|open-calendar|open-email <id>|reminders-sync|reminders-clear|update')
     except (OSError, ValueError, KeyError, TypeError, subprocess.SubprocessError):
         if sys.argv[1:2] == ['list']:
             print(json.dumps({'status': 'Cannot read the Spark inbox', 'emails': [],

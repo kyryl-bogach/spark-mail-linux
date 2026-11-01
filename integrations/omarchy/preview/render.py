@@ -16,7 +16,6 @@ IMAGES = ('omarchy-plugin.png', 'omarchy-plugin-indicators.png', 'omarchy-plugin
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--output', type=Path, default=ROOT / 'docs/screenshots')
-    parser.add_argument('--update', action='store_true', help='Capture only the pending update action')
     options = parser.parse_args()
     options.output.mkdir(parents=True, exist_ok=True)
     (ROOT / 'archive').mkdir(exist_ok=True)
@@ -44,8 +43,6 @@ def main():
     shutil.copy2(HERE / 'mock_helper.py', stage / 'mock_helper.py')
     shutil.copy2(HERE / 'shell.qml', stage / 'shell.qml')
     environment = dict(os.environ, SPARK_PREVIEW_OUT_DIR=str(stage))
-    if options.update:
-        environment['SPARK_PREVIEW_UPDATE'] = '1'
     process = subprocess.Popen(['quickshell', '-p', str(stage / 'shell.qml'), '--no-color'],
                                env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                                text=True, start_new_session=True)
@@ -66,9 +63,7 @@ def main():
         image = stage / name
         if not image.is_file() or image.stat().st_size > 1024 * 1024:
             raise SystemExit(f'Missing or oversized screenshot: {name}. Inspect {stage}')
-        if options.update and name != 'omarchy-plugin.png':
-            continue
-        destination = options.output / ('omarchy-plugin-update.png' if options.update else name)
+        destination = options.output / name
         shutil.copy2(image, destination)
         print(destination)
 

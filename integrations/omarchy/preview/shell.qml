@@ -124,7 +124,6 @@ ShellRoot {
       if ([popupWidget, empty, pending, meeting, both].some(function(widget) {
         return widget.status !== "Inbox" || widget.emails.length !== 3 || widget.events.length !== 3
       })) return
-      if (popupWidget.updateAvailable !== (Quickshell.env("SPARK_PREVIEW_UPDATE") === "1")) return
       stop()
       popupWidget.controller.show()
       empty.emails = []; empty.status = "Inbox is empty"; empty.eventStartsMs = []
@@ -138,7 +137,7 @@ ShellRoot {
     id: settle
     interval: 300
     onTriggered: {
-      if (popupWidget.previewUpdateAction.visible !== (Quickshell.env("SPARK_PREVIEW_UPDATE") === "1")) {
+      if (!popupWidget.previewUpdateAction.visible || !popupWidget.previewUpdateAction.enabled) {
         console.log("CAPTURE_FAILED=update-visibility")
         Qt.quit()
         return

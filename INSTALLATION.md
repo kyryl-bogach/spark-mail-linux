@@ -233,8 +233,8 @@ Run `./update-spark.sh` from the repository root.
 If Spark is current, the command exits without a restart.
 To check without changes, run `./update-spark.sh --check`.
 
-The Omarchy popup shows an update action only when a newer release is available.
-The action opens the same updater in a terminal.
+The Omarchy popup always shows a refresh icon beside **Open Spark**.
+Click it to check for updates and install a newer release through the same updater in a terminal.
 The updater prepares and validates the new application, stops Spark, saves a backup, replaces the application, and restarts Spark.
 It requires the repository installation, a user systemd session, and Hyprland for window checks.
 Adopted installations with custom application or prefix paths still require the manual procedure.

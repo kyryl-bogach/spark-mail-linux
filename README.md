@@ -8,7 +8,7 @@ Two small DLL shims prevent known crashes. Scripts handle launch, browser login,
 - **Unofficial.** Readdle does not support this project.
 - **Verified:** Spark 3.32.2.141404 starts on Arch Linux with Wine 11.16.
 - **CLI:** The bundled Windows CLI works through [bin/spark](bin/spark). Spark Desktop must remain open.
-- **Updates:** Run `./update-spark.sh`, or use the update action in the Omarchy popup when a release is available.
+- **Updates:** Run `./update-spark.sh`, or click the refresh icon beside **Open Spark** in the Omarchy popup.
 
 <img src="docs/screenshots/spark-desktop.png" alt="Spark Desktop on Linux with an empty inbox" width="640">
 
@@ -131,7 +131,7 @@ See [CLI maintenance](AGENTS.md#spark-cli) for agent skills and update checks.
 The optional plugin puts the unified inbox and calendar in the Omarchy bar.
 Click an email to open its thread. Click an event to open Spark's calendar.
 
-<img src="docs/screenshots/omarchy-plugin.png" alt="Spark's Omarchy popup with sample emails, event locations, and conference providers" width="640">
+<img src="docs/screenshots/omarchy-plugin.png" alt="Spark Omarchy popup with a refresh icon beside Open Spark, sample emails, and calendar events" width="640">
 
 - Emails and events share a card layout, with a fixed header and a popup that grows to 80% of the screen height.
 - Event cards show the location or conference provider. Events without either hide the second line.
@@ -163,7 +163,6 @@ To regenerate the screenshots after a UI change, run:
 
 ```bash
 python3 integrations/omarchy/preview/render.py
-python3 integrations/omarchy/preview/render.py --update
 ```
 
 The command renders the real widget with a mock helper. It reads no Spark data and schedules no reminders.
@@ -189,13 +188,10 @@ The updater requires the repository's `app/` and `prefix/` directories, a user s
 It uses the existing Python dependency with no additional Python packages.
 It refuses automatic updates for adopted installations with custom application or prefix paths.
 
-The Omarchy popup shows **Update Spark to VERSION…** only when a newer release is available.
-The action opens a terminal with the same updater. It stays hidden when Spark is current or the check fails.
-The plugin checks at startup and every six hours. It also checks when opened if the previous check is over an hour old.
-
-<img src="docs/screenshots/omarchy-plugin-update.png" alt="Spark popup with an update action above sample inbox and calendar data" width="640">
-
-The screenshot uses sample data. The update action disappears when Spark is current.
+The Omarchy popup always shows a small refresh icon beside **Open Spark**.
+Click it to check for updates and install the latest release through the same updater in a terminal.
+If Spark is current, the updater exits without a restart.
+The plugin makes no background update checks.
 
 Validation covers the installed version, a visible window, Foundation's mapped DLL, and CLI help and version commands.
 The updater also attempts a read-only account query without changing CLI permissions or printing account data.
