@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Read the Spark inbox without persistent email data."""
 import json
+import fcntl
 import os
 from datetime import date, datetime, timedelta
 from pathlib import Path
@@ -13,6 +14,35 @@ from urllib.parse import urlsplit
 from reminders import Reminders
 
 ROOT = Path(__file__).resolve().parents[2]
+
+
+def update_busy():
+    try:
+        with (ROOT / 'tmp/update.lock').open('a') as lock:
+            fcntl.flock(lock, fcntl.LOCK_SH | fcntl.LOCK_NB)
+    except BlockingIOError:
+        return True
+    except FileNotFoundError:
+        pass
+    return False
+
+
+def update_check():
+    if update_busy():
+        return {'available': False}
+    try:
+        result = subprocess.run([str(ROOT / 'update-spark.sh'), '--check'],
+                                capture_output=True, text=True, check=True, timeout=45)
+        return json.loads(result.stdout)
+    except (OSError, ValueError, subprocess.SubprocessError):
+        return {'available': False}
+
+
+def open_update():
+    # Pass the repository path as an argument, never as shell source.
+    subprocess.run(['xdg-terminal-exec', '--title=Spark update', '-e', 'bash', '-c',
+                    '"$1"; result=$?; printf "\nPress Enter to close.\n"; read -r; exit "$result"',
+                    'spark-update', str(ROOT / 'update-spark.sh')], check=True)
 
 
 def spark_running():
@@ -193,6 +223,10 @@ def update_reminders(enabled, status, rows):
 
 
 def overview(reminders_enabled=None, now=None):
+    if update_busy():
+        return {'status': 'Spark update in progress', 'emails': [], 'events': [],
+                'events_label': 'Today', 'events_status': 'Spark update in progress',
+                'event_starts_ms': [], 'reminders_ok': True, 'reminder_status': ''}
     now = (now or datetime.now()).astimezone()
     status, rows = read_calendar(now) if spark_running() else ('closed', [])
     # Update timers before an inbox read that could time out.
@@ -301,7 +335,11 @@ def open_calendar():
 
 if __name__ == '__main__':
     try:
-        if sys.argv[1:] == ['open']:
+        if sys.argv[1:] == ['update-check']:
+            print(json.dumps(update_check()))
+        elif sys.argv[1:] == ['update']:
+            open_update()
+        elif sys.argv[1:] == ['open']:
             open_spark()
         elif sys.argv[1:] == ['open-calendar']:
             open_calendar()

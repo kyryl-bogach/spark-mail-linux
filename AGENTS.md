@@ -15,6 +15,8 @@ Docker does not replace the host display, Wine prefix, or desktop integration in
 | Path | Purpose |
 | --- | --- |
 | `run-spark.sh` | Checks the patches and launches Spark inside Bubblewrap. |
+| `update-spark.sh` | Checks releases, prepares an update, backs up state, and restarts Spark. |
+| `bin/spark-update.py` | Reads release metadata and validates update files, processes, and startup. |
 | `install.sh` | Verifies dependencies and extraction, then builds, patches, and registers. |
 | `INSTALLATION.md` | Agent-facing install guide with user questions, checks, and caveats. |
 | `shims/build.sh` | Builds the two compatibility DLLs with Clang and Wine import libraries. |
@@ -94,6 +96,18 @@ Preserve any existing host skill before replacement. Keep generated skills and p
 Treat a request to update Spark as permission to prepare, back up, replace, and restart this local installation.
 Explain the restart before you stop the application.
 Do not use Spark's update button or run the Windows installer directly.
+
+Use `./update-spark.sh` for routine updates of the repository installation on Hyprland.
+Use `./update-spark.sh --check` for a read-only JSON result.
+The Omarchy popup exposes the updater only when a newer version is available.
+The script uses the official Windows appcast for the installer URL and cross-checks the version against the release notes.
+The release notes can contain an incorrect DMG link. Never derive a Windows URL from that link.
+The appcast supplies the Windows installer URL directly.
+
+The script saves rollback state and logs under `archive/`.
+If a startup check fails after launch, inspect those logs before any rollback.
+Do not automatically restore older mailbox state.
+The manual procedure below remains available for adopted installations and recovery.
 
 ### 1. Identify the release
 

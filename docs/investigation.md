@@ -417,3 +417,27 @@ enabled reached `Application is ready` and then died with `FATAL ERROR ...
 spark-js-addon ... CNAPI.swift ... invalid_arg`. Launches with
 `SPARK_NOTIFY=0` stayed up. The watcher is a separate read-only Python
 process, so a causal link is doubtful and unproven. Isolation work is open.
+
+## Scripted update validation (November 1, 2026)
+
+The update command passes a live upgrade from Spark 3.32.1.141358 to 3.32.2.141404.
+The test uses the previous application from `archive/` with the existing Wine prefix and home overlay.
+It preserves the current application and state before the test. It never restores older mailbox state.
+
+The command downloads the installer from the Windows appcast, verifies extraction, builds both shims, and checks the patched imports.
+Startup checks confirm a visible window, the new runtime version in the launch log, and the mapped Foundation DLL.
+CLI 1.4.1 passes help, version, and read-only account access checks.
+The release check reports a pending update before replacement and no pending update afterward.
+A repeated update command exits without a restart.
+
+The first attempts expose two shutdown cases before application replacement.
+Wine can return nonzero from `wineserver -k` when a graceful quit already stops the server.
+Wine can also leave a disconnected `winedevice.exe` process after the server exits.
+The updater waits for the scoped server, then checks this installation's processes.
+After a grace period, it sends SIGTERM only to verified remaining processes for this installation.
+If processes remain, it aborts before the backup or replacement.
+
+The Omarchy action opens the same command in a terminal.
+The screenshot fixture covers the pending action with sample data and no mailbox access.
+The fixture requires an explicit `Commons.Color` import because an unqualified QML color name resolves incorrectly on this system.
+Mail, calendar, attachment, and notification delivery checks remain separate.

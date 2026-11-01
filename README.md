@@ -8,7 +8,7 @@ Two small DLL shims prevent known crashes. Scripts handle launch, browser login,
 - **Unofficial.** Readdle does not support this project.
 - **Verified:** Spark 3.32.2.141404 starts on Arch Linux with Wine 11.16.
 - **CLI:** The bundled Windows CLI works through [bin/spark](bin/spark). Spark Desktop must remain open.
-- **Updates:** Follow the [update procedure](AGENTS.md#update-spark), not Spark’s update button.
+- **Updates:** Run `./update-spark.sh`, or use the update action in the Omarchy popup when a release is available.
 
 <img src="docs/screenshots/spark-desktop.png" alt="Spark Desktop on Linux with an empty inbox" width="640">
 
@@ -163,16 +163,54 @@ To regenerate the screenshots after a UI change, run:
 
 ```bash
 python3 integrations/omarchy/preview/render.py
+python3 integrations/omarchy/preview/render.py --update
 ```
 
 The command renders the real widget with a mock helper. It reads no Spark data and schedules no reminders.
 
 ## Update
 
-Updates replace the patched DLL. The launcher detects missing patches and refuses to start.
+Run the updater from the repository root:
 
-Follow [AGENTS.md](AGENTS.md#update-spark) to download, prepare, back up, replace, and verify a new version.
-The procedure includes rollback steps and keeps your existing account state.
+```bash
+./update-spark.sh
+```
+
+The command checks the official Windows feed and cross-checks the version against the release notes.
+If Spark is current, it exits without a restart.
+To check without changes, run `./update-spark.sh --check`. This command returns JSON.
+
+The updater downloads, extracts, builds the shims, and validates the new application before it stops Spark.
+It blocks new launcher calls during the update. The Omarchy plugin pauses its mailbox reads.
+After Spark stops, it backs up the prefix, home overlay, notification state, and previous application under `archive/`.
+It preserves the live prefix and Wine runtime, replaces the application, and restarts through the existing launcher.
+
+The updater requires the repository's `app/` and `prefix/` directories, a user systemd session, and Hyprland for window checks.
+It uses the existing Python dependency with no additional Python packages.
+It refuses automatic updates for adopted installations with custom application or prefix paths.
+
+The Omarchy popup shows **Update Spark to VERSION…** only when a newer release is available.
+The action opens a terminal with the same updater. It stays hidden when Spark is current or the check fails.
+The plugin checks at startup and every six hours. It also checks when opened if the previous check is over an hour old.
+
+<img src="docs/screenshots/omarchy-plugin-update.png" alt="Spark popup with an update action above sample inbox and calendar data" width="640">
+
+The screenshot uses sample data. The update action disappears when Spark is current.
+
+Validation covers the installed version, a visible window, Foundation's mapped DLL, and CLI help and version commands.
+The updater also attempts a read-only account query without changing CLI permissions or printing account data.
+Mail, calendar, attachment, and notification delivery checks remain separate.
+A failed startup check leaves the new application and logs available for inspection.
+
+On November 1, 2026, the updater passed a live upgrade from 3.32.1.141358 to 3.32.2.141404 with the existing account state.
+Checks confirmed the runtime version, visible window, Foundation load, CLI 1.4.1, and read-only account access.
+The release check reported an update before the upgrade and no update afterward.
+A second invocation exited without a restart.
+
+If replacement fails before launch, the updater restores the previous application and original Foundation DLL.
+Backups remain under `archive/`. The updater does not delete old backups or restore older mailbox state automatically.
+See the [manual update and rollback procedure](AGENTS.md#update-spark) for recovery.
+Do not use Spark's internal update button. Its Windows installer bypasses the compatibility patches and backups.
 
 ## Work on this project
 

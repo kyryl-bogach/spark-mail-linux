@@ -1,6 +1,7 @@
 import QtQuick
 import Quickshell
 import qs.Commons
+import qs.Commons as Commons
 import "plugin" as Plugin
 import "notifications/components" as Notifications
 
@@ -43,7 +44,7 @@ ShellRoot {
     visible: true
     implicitWidth: Style.space(520)
     implicitHeight: Style.space(440)
-    color: Color.background
+    color: Commons.Color.background
     Item {
       anchors.centerIn: parent
       width: Style.space(480)
@@ -55,29 +56,29 @@ ShellRoot {
         Rectangle {
           width: parent.width
           height: parent.height
-          color: Color.bar.background
+          color: Commons.Color.bar.background
           Row {
             anchors.centerIn: parent
             spacing: 0
             Item {
               width: states.width / 4; height: Style.space(80)
               Plugin.BarWidget { id: empty; helper: mockHelper; anchors.horizontalCenter: parent.horizontalCenter; y: Style.space(16) }
-              Text { anchors.horizontalCenter: parent.horizontalCenter; y: Style.space(56); text: "Empty"; color: Color.foreground; font.pixelSize: Style.font.bodySmall }
+              Text { anchors.horizontalCenter: parent.horizontalCenter; y: Style.space(56); text: "Empty"; color: Commons.Color.foreground; font.pixelSize: Style.font.bodySmall }
             }
             Item {
               width: states.width / 4; height: Style.space(80)
               Plugin.BarWidget { id: pending; helper: mockHelper; anchors.horizontalCenter: parent.horizontalCenter; y: Style.space(16) }
-              Text { anchors.horizontalCenter: parent.horizontalCenter; y: Style.space(56); text: "Pending mail"; color: Color.foreground; font.pixelSize: Style.font.bodySmall }
+              Text { anchors.horizontalCenter: parent.horizontalCenter; y: Style.space(56); text: "Pending mail"; color: Commons.Color.foreground; font.pixelSize: Style.font.bodySmall }
             }
             Item {
               width: states.width / 4; height: Style.space(80)
               Plugin.BarWidget { id: meeting; helper: mockHelper; anchors.horizontalCenter: parent.horizontalCenter; y: Style.space(16) }
-              Text { anchors.horizontalCenter: parent.horizontalCenter; y: Style.space(56); text: "Meeting soon"; color: Color.foreground; font.pixelSize: Style.font.bodySmall }
+              Text { anchors.horizontalCenter: parent.horizontalCenter; y: Style.space(56); text: "Meeting soon"; color: Commons.Color.foreground; font.pixelSize: Style.font.bodySmall }
             }
             Item {
               width: states.width / 4; height: Style.space(80)
               Plugin.BarWidget { id: both; helper: mockHelper; anchors.horizontalCenter: parent.horizontalCenter; y: Style.space(16) }
-              Text { anchors.horizontalCenter: parent.horizontalCenter; y: Style.space(56); text: "Both"; color: Color.foreground; font.pixelSize: Style.font.bodySmall }
+              Text { anchors.horizontalCenter: parent.horizontalCenter; y: Style.space(56); text: "Both"; color: Commons.Color.foreground; font.pixelSize: Style.font.bodySmall }
             }
           }
         }
@@ -123,6 +124,7 @@ ShellRoot {
       if ([popupWidget, empty, pending, meeting, both].some(function(widget) {
         return widget.status !== "Inbox" || widget.emails.length !== 3 || widget.events.length !== 3
       })) return
+      if (popupWidget.updateAvailable !== (Quickshell.env("SPARK_PREVIEW_UPDATE") === "1")) return
       stop()
       popupWidget.controller.show()
       empty.emails = []; empty.status = "Inbox is empty"; empty.eventStartsMs = []
@@ -136,6 +138,11 @@ ShellRoot {
     id: settle
     interval: 300
     onTriggered: {
+      if (popupWidget.previewUpdateAction.visible !== (Quickshell.env("SPARK_PREVIEW_UPDATE") === "1")) {
+        console.log("CAPTURE_FAILED=update-visibility")
+        Qt.quit()
+        return
+      }
       capture(popupWidget.previewPopup.previewCard, "omarchy-plugin.png")
       capture(states, "omarchy-plugin-indicators.png")
       capture(reminders, "omarchy-plugin-reminders.png")

@@ -28,6 +28,16 @@ if [ -f "$config" ]; then
   # shellcheck source=/dev/null
   source "$config"
 fi
+# Hold a shared lock until Wine and its helpers exit. The updater drains it before backup.
+if [ "${SPARK_UPDATE_CONTROL:-0}" != 1 ]; then
+  mkdir -p "$root/tmp"
+  exec 7>"$root/tmp/update-maintenance.lock"
+  if ! flock -n -s 7 || { [ "${SPARK_UPDATE_START:-0}" != 1 ] && ! flock -n "$root/tmp/update.lock" true; }; then
+    echo 'error: Spark is stopped for an update. Try again shortly.' >&2
+    exit 1
+  fi
+fi
+unset SPARK_UPDATE_START
 app=$(readlink -f "${SPARK_APP:-$root/app}")
 prefix=$(readlink -f "${SPARK_PREFIX:-$root/prefix}")
 home_overlay=$root/test-home
@@ -43,7 +53,10 @@ if [ -z "$wine" ]; then
 fi
 [ -n "$wine" ] && [ -x "$wine" ] || { echo "error: no wine binary. Set SPARK_WINE." >&2; exit 1; }
 
-if [ "${SPARK_CLI:-0}" = 1 ]; then
+if [ "${SPARK_WINESERVER:-0}" = 1 ]; then
+  [ "${SPARK_UPDATE_CONTROL:-0}" = 1 ] || { echo 'error: Wine server control requires the updater.' >&2; exit 1; }
+  exe='C:\windows\system32\cmd.exe'
+elif [ "${SPARK_CLI:-0}" = 1 ]; then
   exe=$app/resources/app.asar.unpacked/node_modules/@readdle/sparkcore-win/bin/Release/SparkCore.bundle/spark.exe
 else
   exe=${SPARK_EXE:-$app/Spark Desktop.exe}
@@ -175,6 +188,10 @@ if [ "${SPARK_IMAGE_BRIDGE:-1}" != 0 ] && [ "${SPARK_CLI:-0}" != 1 ] &&
   image_watcher=$!
 fi
 
+wine_command=("$wine" "$exe")
+if [ "${SPARK_WINESERVER:-0}" = 1 ]; then
+  wine_command=("$(dirname "$(readlink -f "$wine")")/wineserver")
+fi
 status=0
 overrides=${SPARK_OVERRIDES:-winemenubuilder.exe=d;powershell.exe,pwsh.exe=d;mscoree=d;mshtml=d;ucrtbase,concrt140,msvcp140,msvcp140_1,msvcp140_2,msvcp140_atomic_wait,msvcp140_codecvt_ids,vcamp140,vccorlib140,vcomp140,vcruntime140,vcruntime140_1,vcruntime140_threads=n,b}
 debug=${SPARK_DEBUG:--all}
@@ -188,7 +205,7 @@ if [ "${SPARK_CONTAINER:-1}" = 0 ]; then
   (
     cd "$app"
     export SPARK_ROOT=$root WINEPREFIX=$prefix WINEDLLOVERRIDES=$overrides WINEDEBUG=$debug PATH=$wine_path
-    "$wine" "$exe" "$@"
+    "${wine_command[@]}" "$@"
   ) || status=$?
 else
   bwrap \
@@ -212,7 +229,7 @@ else
     --setenv WINEDEBUG "$debug" \
     --setenv PATH "$wine_path" \
     --chdir "$app" \
-    "$wine" "$exe" "$@" || status=$?
+    "${wine_command[@]}" "$@" || status=$?
 fi
 
 exit "$status"

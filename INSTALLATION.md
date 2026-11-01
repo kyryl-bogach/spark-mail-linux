@@ -229,7 +229,16 @@ the desktop launcher and handler entries plus any symlink the user approved.
 
 ## 8. Update Spark later
 
-Do not use Spark's update button. Do not run the Windows installer directly.
-Follow the update procedure in [AGENTS.md](AGENTS.md#update-spark). It backs
-up the state, replaces the app, and verifies the result. Rollback steps are
-included.
+Run `./update-spark.sh` from the repository root.
+If Spark is current, the command exits without a restart.
+To check without changes, run `./update-spark.sh --check`.
+
+The Omarchy popup shows an update action only when a newer release is available.
+The action opens the same updater in a terminal.
+The updater prepares and validates the new application, stops Spark, saves a backup, replaces the application, and restarts Spark.
+It requires the repository installation, a user systemd session, and Hyprland for window checks.
+Adopted installations with custom application or prefix paths still require the manual procedure.
+
+See [the update guide](README.md#update) for validation limits and requirements.
+Follow [AGENTS.md](AGENTS.md#update-spark) for manual updates and rollback.
+Do not use Spark's update button or run the Windows installer directly.

@@ -3,6 +3,7 @@ import QtQuick.Controls as Controls
 import Quickshell
 import Quickshell.Io
 import qs.Commons
+import qs.Commons as Commons
 import qs.Ui
 
 Panel {
@@ -11,6 +12,9 @@ Panel {
   manageIpc: false
   implicitWidth: button.implicitWidth
   implicitHeight: button.implicitHeight
+  property bool updateAvailable: false
+  property string updateVersion: ""
+  property double lastUpdateCheck: 0
   property var emails: []
   property string status: "Read the inbox..."
   property var events: []
@@ -38,7 +42,7 @@ Panel {
     if (reminderStatus) text += " · " + reminderStatus
     return text
   }
-  readonly property color contentForeground: Color.popups.text
+  readonly property color contentForeground: Commons.Color.popups.text
   property string helper: decodeURIComponent(Qt.resolvedUrl("helper.py").toString().replace(/^file:\/\//, ""))
 
   function refresh() {
@@ -46,7 +50,20 @@ Panel {
     fetch.command = ["python3", root.helper, "list", root.calendarRemindersEnabled ? "--reminders" : "--no-reminders"]
     fetch.running = true
   }
+  function checkUpdate() {
+    if (updateCheck.running || Date.now() - lastUpdateCheck < 3600000) return
+    lastUpdateCheck = Date.now()
+    updateCheck.running = true
+  }
+  function runUpdate() {
+    if (updateLaunch.running) return
+    updateAvailable = false
+    lastUpdateCheck = 0
+    updateLaunch.running = true
+    close()
+  }
   function open() {
+    checkUpdate()
     controller.show()
     refresh()
   }
@@ -65,6 +82,37 @@ Panel {
     close()
   }
 
+  Process {
+    id: updateCheck
+    command: ["python3", root.helper, "update-check"]
+    stdout: StdioCollector {
+      onStreamFinished: {
+        root.updateAvailable = false
+        try {
+          var result = JSON.parse(text)
+          root.updateAvailable = result.available === true
+          root.updateVersion = result.version || ""
+        } catch (error) {}
+      }
+    }
+    onExited: function(code) { if (code !== 0) root.updateAvailable = false }
+  }
+  Process {
+    id: updateLaunch
+    command: ["python3", root.helper, "update"]
+    onExited: function(code) {
+      root.lastUpdateCheck = 0
+      root.checkUpdate()
+      if (code !== 0) { root.status = "Cannot open the update terminal"; root.controller.show() }
+    }
+  }
+  Timer {
+    interval: 21600000
+    running: true
+    repeat: true
+    triggeredOnStart: true
+    onTriggered: root.checkUpdate()
+  }
   Process {
     id: fetch
     stdout: StdioCollector {
@@ -131,7 +179,7 @@ Panel {
     bar: root.bar
     text: "󰇮"
     active: root.hasPendingMail
-    activeColor: Color.accent
+    activeColor: Commons.Color.accent
     tooltipText: root.iconTooltip
     onPressed: function(b) {
       if (b === Qt.MiddleButton) root.openSpark()
@@ -146,12 +194,12 @@ Panel {
       width: Style.space(11)
       height: width
       radius: width / 2
-      color: Color.bar.background
+      color: Commons.Color.bar.background
       Text {
         anchors.centerIn: parent
         text: "󰃭"
         textFormat: Text.PlainText
-        color: Color.urgent
+        color: Commons.Color.urgent
         font.family: Style.font.family
         font.pixelSize: Style.font.iconSmall
       }
@@ -164,17 +212,17 @@ Panel {
     required property string metadataText
     required property string iconText
     required property string tooltipText
-    property color foreground: Color.popups.text
+    property color foreground: Commons.Color.popups.text
     signal activated()
 
     implicitHeight: Math.max(Style.space(60), labels.implicitHeight + Style.space(24))
     height: implicitHeight
     radius: Style.cornerRadius
-    color: hover.pressed ? Style.pressedFillFor(foreground, Color.accent)
-      : hover.containsMouse ? Style.hoverFillFor(foreground, Color.accent)
+    color: hover.pressed ? Style.pressedFillFor(foreground, Commons.Color.accent)
+      : hover.containsMouse ? Style.hoverFillFor(foreground, Commons.Color.accent)
       : Util.alpha(foreground, 0.035)
     border.width: Style.spacing.hairline
-    border.color: Util.alpha(hover.containsMouse ? Color.accent : foreground, hover.containsMouse ? 0.3 : 0.08)
+    border.color: Util.alpha(hover.containsMouse ? Commons.Color.accent : foreground, hover.containsMouse ? 0.3 : 0.08)
 
     Rectangle {
       id: icon
@@ -184,12 +232,12 @@ Panel {
       width: Style.space(32)
       height: width
       radius: Style.cornerRadius
-      color: Util.alpha(Color.accent, 0.08)
+      color: Util.alpha(Commons.Color.accent, 0.08)
       Text {
         anchors.centerIn: parent
         text: card.iconText
         textFormat: Text.PlainText
-        color: Color.accent
+        color: Commons.Color.accent
         font.family: Style.font.family
         font.pixelSize: Style.font.icon
       }
@@ -252,7 +300,7 @@ Panel {
     id: section
     required property string label
     required property string detail
-    property color foreground: Color.popups.text
+    property color foreground: Commons.Color.popups.text
     implicitHeight: heading.implicitHeight + Style.space(8)
     height: implicitHeight
     Text {
@@ -326,7 +374,7 @@ Panel {
           anchors.right: parent.right
           anchors.verticalCenter: parent.verticalCenter
           text: "Open Spark ↗"
-          foreground: Color.accent
+          foreground: Commons.Color.accent
           fontFamily: headerTitle.font.family
           fontSize: Style.font.bodySmall
           bordered: true
@@ -362,6 +410,17 @@ Panel {
           id: content
           width: flick.width - (scrollBar.visible ? Style.space(10) : 0)
           spacing: Style.spacing.rowGap
+          Button {
+            id: updateAction
+            visible: root.updateAvailable
+            width: parent.width
+            text: "Update Spark to " + root.updateVersion + "…"
+            fontFamily: headerTitle.font.family
+            fontSize: Style.font.bodySmall
+            foreground: Commons.Color.accent
+            bordered: true
+            onClicked: root.runUpdate()
+          }
           SectionHeader {
             width: parent.width
             label: "Inbox"
@@ -405,7 +464,7 @@ Panel {
             width: parent.width
             text: root.reminderStatus
             textFormat: Text.PlainText
-            color: Color.urgent
+            color: Commons.Color.urgent
             font.pixelSize: Style.font.bodySmall
             wrapMode: Text.Wrap
             padding: Style.spacing.rowPaddingX

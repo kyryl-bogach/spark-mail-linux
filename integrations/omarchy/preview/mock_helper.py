@@ -1,6 +1,12 @@
 """Provide sample data for UI screenshots. Never invoke Spark or schedule reminders."""
 from datetime import datetime, timedelta
 import json
+import os
+import sys
+
+if sys.argv[1:] == ['update-check']:
+    print(json.dumps({'available': os.environ.get('SPARK_PREVIEW_UPDATE') == '1', 'version': '3.32.2.141404'}))
+    sys.exit(0)
 
 now = datetime.now().astimezone()
 tomorrow = (now + timedelta(days=1)).replace(hour=9, minute=30, second=0, microsecond=0)

@@ -1,4 +1,5 @@
 import os
+import fcntl
 from pathlib import Path
 import socket
 import subprocess
@@ -10,6 +11,47 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class LauncherTests(unittest.TestCase):
+    def test_update_lock_blocks_new_calls_and_releases_cleanly(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = self.make_root(temporary)
+            (root / 'tmp').mkdir(exist_ok=True)
+            environment = dict(os.environ, SPARK_ROOT=str(root), SPARK_CONTAINER='0',
+                               SPARK_NOTIFY='0', SPARK_CLOSE_TRAY='0', SPARK_WINE='/bin/true')
+            with (root / 'tmp/update.lock').open('w') as lock:
+                fcntl.flock(lock, fcntl.LOCK_EX)
+                result = subprocess.run([ROOT / 'run-spark.sh'], env=environment,
+                                        capture_output=True, text=True)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn('stopped for an update', result.stderr)
+            result = subprocess.run([ROOT / 'run-spark.sh'], env=environment,
+                                    capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_wine_server_control_uses_launcher_mounts_and_selected_runtime(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = self.make_root(temporary)
+            fake_bin = root / 'fake-bin'
+            fake_bin.mkdir()
+            args = root / 'arguments'
+            for name in ('wine', 'wineserver'):
+                path = fake_bin / name
+                path.touch()
+                path.chmod(0o755)
+            bwrap = fake_bin / 'bwrap'
+            bwrap.write_text('#!/bin/sh\nprintf "%s\\n" "$@" > "$ARGUMENTS"\n')
+            bwrap.chmod(0o755)
+            environment = dict(os.environ, SPARK_ROOT=str(root), SPARK_NOTIFY='0',
+                               SPARK_CLOSE_TRAY='0', SPARK_IMAGE_BRIDGE='0', SPARK_UPDATE_CONTROL='1',
+                               SPARK_WINESERVER='1', SPARK_WINE=str(fake_bin / 'wine'),
+                               PATH=str(fake_bin) + ':' + os.environ['PATH'], ARGUMENTS=str(args))
+            result = subprocess.run([ROOT / 'run-spark.sh', '-k'], env=environment,
+                                    capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            values = args.read_text().splitlines()
+            self.assertEqual(values[-2:], [str(fake_bin / 'wineserver'), '-k'])
+            self.assertIn(str(root / 'tmp'), values)
+            self.assertEqual(values[values.index('WINEPREFIX') + 1], str(root / 'prefix'))
+
     def test_passes_prefix_tool_paths_to_wine(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = self.make_root(temporary)
