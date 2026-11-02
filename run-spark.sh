@@ -95,7 +95,8 @@ if [ -f "$foundation" ]; then
   fi
 fi
 
-mkdir -p "$tmp_dir" "$home_overlay"
+# Bubblewrap needs every bind source. Wine initializes an empty prefix.
+mkdir -p "$tmp_dir" "$home_overlay" "$prefix"
 
 # GNOME Shell starts applications with stdout and stderr connected to the
 # journal through a socket. Under Wine, Electron fails with "open EBADF"

@@ -23,14 +23,18 @@ stage=$(mktemp -d "$root/tmp/host-filetypes.XXXXXXXX")
 trap 'rm -rf "$stage"' EXIT
 registry_file=$stage/fallback.reg
 existing=$stage/existing.reg
+# Show Wine and launcher errors only when a step fails.
+errors=$stage/errors.log
 cat "$root/share/host-filetypes.reg" > "$registry_file"
 
 # Export once to read default values without localized query labels.
-if ! windows_stage=$(wine_tool 'C:\windows\system32\winepath.exe' -w "$stage" </dev/null 2>/dev/null | tr -d '\r') || [ -z "$windows_stage" ]; then
+if ! windows_stage=$(wine_tool 'C:\windows\system32\winepath.exe' -w "$stage" </dev/null 2>"$errors" | tr -d '\r') || [ -z "$windows_stage" ]; then
+  cat "$errors" >&2
   echo 'error: cannot resolve the registry export path. No associations were changed.' >&2
   exit 1
 fi
-if ! wine_tool 'C:\windows\system32\reg.exe' export HKCR "$windows_stage\\existing.reg" /y </dev/null >/dev/null 2>&1; then
+if ! wine_tool 'C:\windows\system32\reg.exe' export HKCR "$windows_stage\\existing.reg" /y </dev/null >/dev/null 2>"$errors"; then
+  cat "$errors" >&2
   echo 'error: cannot read Wine file associations. No associations were changed.' >&2
   exit 1
 fi

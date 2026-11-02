@@ -157,6 +157,29 @@ class LauncherTests(unittest.TestCase):
             (ROOT / 'bin' / 'open-host-url.py').read_bytes())
         return root
 
+    def test_fresh_install_has_every_bind_source(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = self.make_root(temporary)
+            fake_bin = root / 'fake-bin'
+            fake_bin.mkdir()
+            # Like the real bwrap, reject a writable bind whose source path is missing.
+            bwrap = fake_bin / 'bwrap'
+            bwrap.write_text(
+                '#!/bin/sh\n'
+                'while [ $# -gt 0 ]; do\n'
+                '  case $1 in --bind)\n'
+                '    [ -e "$2" ] || { echo "missing $2" >&2; exit 1; }; shift 2 ;;\n'
+                '  *) shift ;; esac\n'
+                'done\n')
+            bwrap.chmod(0o755)
+            environment = dict(os.environ, PATH=f'{fake_bin}:{os.environ["PATH"]}',
+                               SPARK_DOWNLOADS='', SPARK_NOTIFY='0', SPARK_ROOT=str(root),
+                               SPARK_WINE='/bin/true')
+            result = subprocess.run([ROOT / 'run-spark.sh'], env=environment,
+                                    capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertTrue((root / 'prefix').is_dir())
+
     def test_default_overrides_disable_powershell_probes(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = self.make_root(temporary)

@@ -10,7 +10,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class HostFiletypeTests(unittest.TestCase):
-    def run_registration(self, export, fail=False):
+    def run_registration(self, export, fail_step=''):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             (root / 'bin').mkdir()
@@ -23,16 +23,16 @@ class HostFiletypeTests(unittest.TestCase):
                 'import os, sys\n'
                 'from pathlib import Path\n'
                 'root = Path(os.environ["SPARK_ROOT"])\n'
+                'if sys.argv[1] == os.environ["FAIL_STEP"]: sys.exit("bwrap: launcher failure")\n'
                 'if sys.argv[1] == "-w":\n'
                 '    print(sys.argv[2])\n'
                 'elif sys.argv[1] == "export":\n'
-                '    if os.environ.get("EXPORT_FAIL") == "1": sys.exit(1)\n'
                 '    Path(sys.argv[3].replace(chr(92), "/")).write_bytes((root / "source.reg").read_bytes())\n'
                 'else:\n'
                 '    (root / "imported.reg").write_bytes(Path(sys.argv[2]).read_bytes())\n')
             (root / 'run-spark.sh').chmod(0o755)
             result = subprocess.run([root / 'bin/register-host-filetypes.sh'],
-                                    env=dict(os.environ, EXPORT_FAIL='1' if fail else '0'),
+                                    env=dict(os.environ, FAIL_STEP=fail_step),
                                     capture_output=True, text=True)
             imported = root / 'imported.reg'
             return result, imported.read_text() if imported.exists() else None
@@ -50,9 +50,12 @@ class HostFiletypeTests(unittest.TestCase):
             self.assertIn(f'[HKEY_CLASSES_ROOT\\.{extension}]', imported)
 
     def test_failed_export_never_imports_associations(self):
-        result, imported = self.run_registration(b'REGEDIT4\n', fail=True)
-        self.assertNotEqual(result.returncode, 0)
-        self.assertIsNone(imported)
+        for step in ('-w', 'export'):
+            with self.subTest(step=step):
+                result, imported = self.run_registration(b'REGEDIT4\n', fail_step=step)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn('bwrap: launcher failure', result.stderr)
+                self.assertIsNone(imported)
 
     def test_invalid_export_never_imports_associations(self):
         result, imported = self.run_registration(b'not registry data')
