@@ -173,7 +173,8 @@ class LauncherTests(unittest.TestCase):
                 'done\n')
             bwrap.chmod(0o755)
             environment = dict(os.environ, PATH=f'{fake_bin}:{os.environ["PATH"]}',
-                               SPARK_NOTIFY='0', SPARK_ROOT=str(root), SPARK_WINE='/bin/true')
+                               SPARK_DOWNLOADS='', SPARK_NOTIFY='0', SPARK_ROOT=str(root),
+                               SPARK_WINE='/bin/true')
             result = subprocess.run([ROOT / 'run-spark.sh'], env=environment,
                                     capture_output=True, text=True)
             self.assertEqual(result.returncode, 0, result.stderr)
