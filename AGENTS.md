@@ -105,7 +105,9 @@ The release notes can contain an incorrect DMG link. Never derive a Windows URL 
 The appcast supplies the Windows installer URL directly.
 
 The script saves rollback state and logs under `archive/`.
+After a confirmed startup, it deletes its own older backups and update directories beyond `SPARK_KEEP_BACKUPS` (default 1).
 If a startup check fails after launch, inspect those logs before any rollback.
+Keep investigation files out of the `pre-update-*` and `update-*` directories, because the updater can delete them.
 Do not automatically restore older mailbox state.
 The manual procedure below remains available for adopted installations and recovery.
 

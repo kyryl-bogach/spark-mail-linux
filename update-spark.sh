@@ -18,6 +18,8 @@ if [ "$app" != "$root/app" ] || [ "$prefix" != "$root/prefix" ] ||
   echo 'error: automatic updates require the repository app and prefix directories.' >&2
   exit 1
 fi
+keep=${SPARK_KEEP_BACKUPS:-1}
+[[ $keep =~ ^[1-9][0-9]*$ ]] || { echo 'error: SPARK_KEEP_BACKUPS must be a positive integer.' >&2; exit 1; }
 for command in python3 curl bsdtar clang objdump flock systemd-run systemctl timeout hyprctl; do
   command -v "$command" >/dev/null || { echo "error: missing $command" >&2; exit 1; }
 done
@@ -144,3 +146,6 @@ else
   echo 'CLI account access was not confirmed. Account permissions were not changed.'
 fi
 echo 'Mail, calendar, attachment, and notification delivery checks remain separate.'
+# Prune last, after every fatal check. A failed update keeps every backup for diagnosis.
+python3 "$metadata" prune "$root/archive" "$backup" "$stage" "$keep" ||
+  echo 'warning: older backups were not removed. The update itself succeeded.' >&2

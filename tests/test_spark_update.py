@@ -123,6 +123,49 @@ DLL Name: sprkiphl.dll
                 (directory / 'cmdline').write_bytes(b'Spark Desktop.exe\0')
             self.assertEqual(update.owned_processes('/spark', '/spark/prefix', proc), [1])
 
+    def archive_fixture(self, directory):
+        archive = Path(directory) / 'archive'
+        outside = Path(directory) / 'outside'
+        outside.mkdir()
+        (outside / 'keep').touch()
+        names = ['pre-update-3.32.1.141358-oldest', 'pre-update-3.32.2.141404-olderA',
+                 'update-3.32.1.141358-oldest', 'update-3.32.2.141404-olderA',
+                 'pre-update-3.32.3.141500-currnt', 'update-3.32.3.141500-currnt',
+                 'update-ui-check', 'update-e2e-kw95a2bo', 'prefix-backup', 'pre-update']
+        for age, name in enumerate(reversed(names)):
+            path = archive / name
+            path.mkdir(parents=True)
+            (path / 'data').touch()
+            os.utime(path, (1000 - age, 1000 - age))
+        (archive / 'pre-update-3.31.0.140987-isfile').touch()
+        (archive / 'pre-update-3.30.0.140000-linked').symlink_to(outside)
+        return archive, outside
+
+    def prune(self, archive, keep):
+        return update.prune(str(archive), str(archive / 'pre-update-3.32.3.141500-currnt'),
+                            str(archive / 'update-3.32.3.141500-currnt'), keep)
+
+    def test_prune_keeps_current_and_unrelated_entries(self):
+        with tempfile.TemporaryDirectory() as directory:
+            archive, outside = self.archive_fixture(directory)
+            self.assertEqual(self.prune(archive, '1'), 4)
+            self.assertEqual(sorted(path.name for path in archive.iterdir()), [
+                'pre-update', 'pre-update-3.30.0.140000-linked', 'pre-update-3.31.0.140987-isfile',
+                'pre-update-3.32.3.141500-currnt', 'prefix-backup', 'update-3.32.3.141500-currnt',
+                'update-e2e-kw95a2bo', 'update-ui-check'])
+            self.assertTrue((outside / 'keep').exists())
+
+    def test_prune_keeps_newest_complete_backup_over_newer_empty_attempt(self):
+        with tempfile.TemporaryDirectory() as directory:
+            archive, _ = self.archive_fixture(directory)
+            empty = archive / 'pre-update-3.32.3.141500-failed'
+            empty.mkdir()
+            self.assertEqual(self.prune(archive, '2'), 3)
+            self.assertTrue((archive / 'pre-update-3.32.2.141404-olderA').exists())
+            self.assertTrue((archive / 'update-3.32.2.141404-olderA').exists())
+            self.assertFalse(empty.exists())
+            self.assertFalse((archive / 'pre-update-3.32.1.141358-oldest').exists())
+
 
 class UpdaterShellTests(unittest.TestCase):
     def fixture(self, directory, available=True):
@@ -159,6 +202,8 @@ class UpdaterShellTests(unittest.TestCase):
                 installed='3.32.2.141404', version='3.32.3.141500',
                 url='https://downloads.sparkmailapp.com/Spark3/win/dist/3.32.3.141500/Spark.exe', size=2))) + ')\n'
             'elif cmd == "version": print("3.32.3.141500")\n'
+            'elif cmd == "startup" and os.getenv("FAIL_STARTUP"): sys.exit(1)\n'
+            'elif cmd == "prune": (pathlib.Path(__file__).resolve().parents[1] / "prune.args").write_text(" ".join(args))\n'
             'elif cmd == "verify" and args[0] == str(pathlib.Path(__file__).resolve().parents[1] / "app") and os.getenv("FAIL_VERIFY"):\n'
             ' sys.exit(1)\n')
         scripts = {
@@ -197,6 +242,26 @@ class UpdaterShellTests(unittest.TestCase):
             self.assertEqual((root / 'prefix/state').read_text(), 'original state')
             self.assertEqual((backup / 'prefix/state').read_text(), 'original state')
             self.assertEqual((root / 'Foundation.original.dll').read_text(), 'new foundation')
+            stage = next((root / 'archive').glob('update-*'))
+            self.assertEqual((root / 'prune.args').read_text(), f'{root}/archive {backup} {stage} 1')
+
+    def test_failed_startup_keeps_all_backups(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root, env = self.prepared_fixture(directory)
+            result = self.run_script(root, dict(env, FAIL_STARTUP='1'))
+            self.assertNotEqual(result.returncode, 0)
+            self.assertFalse((root / 'prune.args').exists())
+            self.assertTrue((root / 'app/new').exists())
+
+    def test_invalid_keep_setting_is_rejected_before_download(self):
+        for keep in ('0', 'two', '-1', '01'):
+            with self.subTest(keep=keep), tempfile.TemporaryDirectory() as directory:
+                root, env = self.fixture(directory)
+                (root / 'spark.local.env').write_text(f'SPARK_KEEP_BACKUPS={keep!r}\n')
+                result = self.run_script(root, env)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn('SPARK_KEEP_BACKUPS', result.stderr)
+                self.assertFalse((root / 'archive').exists())
 
     def test_failed_promotion_and_live_check_restore_previous_app(self):
         for failure in ('FAIL_PROMOTE', 'FAIL_VERIFY'):

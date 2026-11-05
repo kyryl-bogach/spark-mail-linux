@@ -204,7 +204,11 @@ The release check reported an update before the upgrade and no update afterward.
 A second invocation exited without a restart.
 
 If replacement fails before launch, the updater restores the previous application and original Foundation DLL.
-Backups remain under `archive/`. The updater does not delete old backups or restore older mailbox state automatically.
+Backups and update directories remain under `archive/`.
+After the startup and CLI checks pass, the updater keeps the newest backup and update directory and deletes older ones.
+To keep more of each, set `SPARK_KEEP_BACKUPS` in `spark.local.env`. The default is 1.
+If an update fails, the updater deletes nothing. It never restores older mailbox state automatically.
+The updater deletes only `pre-update-<version>-XXXXXX` and `update-<version>-XXXXXX` directories. Other files in `archive/` remain.
 See the [manual update and rollback procedure](AGENTS.md#update-spark) for recovery.
 Do not use Spark's internal update button. Its Windows installer bypasses the compatibility patches and backups.
 

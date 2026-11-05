@@ -4,6 +4,7 @@ import json
 import os
 from pathlib import Path, PurePosixPath
 import re
+import shutil
 import signal
 import struct
 import subprocess
@@ -16,6 +17,9 @@ FEED = 'https://downloads.sparkmailapp.com/Spark3/win/dist/appcast.xml'
 NOTES = 'https://sparkmailapp.com/spark3/win/changelog'
 NS = '{http://www.andymatuschak.org/xml-namespaces/sparkle}'
 CORE = 'resources/app.asar.unpacked/node_modules/@readdle/sparkcore-win/bin/Release/SparkCore.bundle'
+# Match only the directories that update-spark.sh creates with mktemp.
+UPDATER_DIRS = {kind: re.compile(kind + r'-\d+\.\d+\.\d+\.\d+-[A-Za-z0-9]{6}')
+                for kind in ('pre-update', 'update')}
 
 
 def version_key(version):
@@ -207,6 +211,24 @@ def startup(root, prefix, version, log=None):
     raise ValueError('Startup was not confirmed. Check the saved launch log.')
 
 
+def prune(archive, backup, stage, keep):
+    """Keep the current backup and update directory and the newest older ones, up to keep each."""
+    if not (Path(backup).is_dir() and Path(stage).is_dir()):
+        raise ValueError('The current update directory is missing. No backups were removed.')
+    removed = 0
+    for kind, current in (('pre-update', Path(backup)), ('update', Path(stage))):
+        # Never follow a symbolic link out of the archive.
+        older = [path for path in Path(archive).iterdir()
+                 if path != current and UPDATER_DIRS[kind].fullmatch(path.name)
+                 and path.is_dir() and not path.is_symlink()]
+        # An attempt that stopped before the copy leaves an empty backup. Remove those first.
+        older.sort(key=lambda path: (any(path.iterdir()), path.stat().st_mtime), reverse=True)
+        for path in older[int(keep) - 1:]:
+            shutil.rmtree(path)
+            removed += 1
+    return removed
+
+
 def main():
     command, *args = sys.argv[1:]
     if command == 'check':
@@ -225,6 +247,10 @@ def main():
         stop_main(*args)
     elif command == 'wait-stopped':
         wait_stopped(*args)
+    elif command == 'prune':
+        removed = prune(*args)
+        if removed:
+            print(f'Removed {removed} older backups and update directories from archive/.')
     else:
         raise ValueError('Unsupported update command')
 
