@@ -1,113 +1,40 @@
 # spark-mail-linux
 
-## TL;DR
-
 Run [Spark Mail](https://sparkmailapp.com/) for Windows on Linux with Wine.
-Two small DLL shims prevent known crashes. Scripts handle launch, browser login, and native notifications.
+Two DLL shims prevent known crashes. Scripts handle launch, browser login, and native notifications.
 
-- **Unofficial.** Readdle does not support this project.
-- **Verified:** Spark 3.32.3.141489 starts on Arch Linux with Wine 11.16.
-- **CLI:** The bundled Windows CLI works through [bin/spark](bin/spark). Spark Desktop must remain open.
-- **Updates:** Run `./update-spark.sh`, or click the refresh icon beside **Open Spark** in the Omarchy popup.
+This project is unofficial. Readdle does not support it.
+
+**Verified:** Spark 3.32.3.141489 starts on Arch Linux with Wine 11.16.
 
 <img src="docs/screenshots/spark-desktop.png" alt="Spark Desktop on Linux with an empty inbox" width="640">
 
 ## Install
 
-See [INSTALLATION.md](INSTALLATION.md) for full instructions, verification steps, caveats, and troubleshooting.
-The recommended way to install is to give this repository to a coding agent. The installation document is written for that.
+Run these steps from the repository root on Arch Linux:
 
-The short path on Arch Linux:
+1. Download the official Windows `Spark.exe`. Follow [the installation guide](INSTALLATION.md#2-get-the-installer) to check the release and installer URL.
+2. Run `./install.sh /path/to/Spark.exe`.
+3. Launch Spark with `./run-spark.sh`. Use this command for later launches too.
 
-1. Download the official Windows `Spark.exe`. Confirm the current version and URL on the [release notes](https://sparkmailapp.com/spark3/win/changelog).
-2. Run `./install.sh /path/to/Spark.exe` from the repository root.
-3. Launch with `./run-spark.sh`. Use that command for later launches too.
+The installer adds a desktop launcher and registers browser callbacks, deep links, and `mailto:` links.
+The application, Wine prefix, and account state stay in this directory.
 
-The app and Wine state stay in this directory. The installer adds a normal
-application launcher and registers Spark for browser callbacks, deep links,
-and `mailto:` links with your desktop.
-
-Web links use the host desktop portal to open your default browser with its existing profile.
-Attachments open with the host's default application: the launcher's `xdg-open` wrapper asks your
-user service manager (`systemd-run --user`) to run the host `xdg-open` outside the container.
-Host file opening requires systemd 254 or later.
-This requires `python-gobject`, `xdg-desktop-portal`, and a portal backend for your desktop.
-Omarchy already provides the portal backend.
-Saved attachments land in your download directory (`xdg-user-dir DOWNLOAD`), which the launcher
-mounts into the home overlay. Set `SPARK_DOWNLOADS` in `spark.local.env` to choose another
-absolute directory, or set it empty to keep downloads inside the overlay.
-The launcher creates a missing download directory. Direct Wine mode does not add a download mount.
-
-After Spark's renderer is ready, the launcher hides Wine's tray window.
-It keeps `explorer.exe` active because that process manages the clipboard.
-Wine then shares copied text with the desktop clipboard through XWayland.
-
-The tray helper requires `xprop` and `libX11`.
-If Spark already runs, quit Spark fully and launch it again with `./run-spark.sh` to apply these changes.
-
-Spark's editor pastes images only from the Windows `CF_DIB` clipboard format, which Wine does not
-provide for Wayland images. On Hyprland, an optional watcher adds `CF_DIB` when Spark has focus and
-the clipboard holds only an image. It handles PNG, JPEG, GIF, TIFF, and other GdkPixbuf formats such as WebP.
-Clipboard selections with text, HTML, or file lists stay unchanged.
-The watcher needs `hyprctl`, `wl-paste`, and GdkPixbuf. Its converter is built with `winegcc`.
-For an existing installation, run `./bin/build-wine-helpers.sh`, then restart Spark.
-Set `SPARK_IMAGE_BRIDGE=0` to disable the watcher.
-
-If a monitor is removed, Wine can hide a Spark window that was on it. Spark keeps running without a window.
-When you launch Spark again, the launcher moves such windows onto the primary monitor before it forwards the launch.
-The same build script creates this helper. See [Window lost after a monitor change](docs/investigation.md#window-lost-after-a-monitor-change).
-
-Wine passes files copied in a file manager to Spark as `CF_HDROP`. Bubblewrap replaces your home
-directory with `test-home/`, so Spark cannot read a file copied from your real home directory.
+See [INSTALLATION.md](INSTALLATION.md) for dependencies, setup options, and troubleshooting.
 
 ## What works
 
-Login, inbox, calendar, mail delivery, attachments, and notifications were tested on Spark 3.30.10 and 3.30.11.
-Version 3.30.12 has passed desktop startup checks. Its mail, calendar, and attachment operations still need separate checks.
-Version 3.31.1 has passed desktop startup, notification watcher, and read-only CLI checks. Its mail, calendar, and attachment operations still need separate checks.
-Version 3.31.2 has passed desktop startup, notification watcher, and read-only CLI checks. Its mail, calendar, and attachment operations still need separate checks.
-Version 3.31.3 has passed desktop startup, notification watcher, and read-only CLI checks. Its mail, calendar, and attachment operations still need separate checks.
-Version 3.31.4.141104 has passed desktop startup, notification watcher, and read-only CLI account checks with CLI 1.3.1.
-Version 3.31.5.141153 has passed desktop startup, notification watcher, and read-only CLI account checks with CLI 1.4.0.
-Version 3.31.6.141244 has passed desktop startup, notification watcher, and read-only CLI account checks with CLI 1.4.0.
-Version 3.32.0.141284 has passed desktop startup, notification watcher, and read-only CLI account checks with CLI 1.4.0.
+Spark 3.32.3.141489 runs and loads SparkCore.
+Mail, calendar, attachments, and notification delivery still need checks on this version.
 
-Version 3.32.1.141358 passes desktop startup checks, loads SparkCore, and keeps the notification watcher active.
-CLI 1.4.1 passes help, version, and read-only account checks against the existing account state.
-Mail, calendar, attachment, and notification delivery checks remain unverified for this version.
-
-Version 3.32.2.141404 passes desktop startup checks, loads SparkCore, and keeps the notification watcher active.
-CLI 1.4.1 passes help, version, and read-only account checks against the existing account state.
-Mail, calendar, attachment, and notification delivery checks remain unverified for this version.
-
-Version 3.32.3.141489 runs with Wine 11.16 and loads SparkCore.
-The launch log confirms the installed version.
-Mail, calendar, attachment, and notification delivery checks remain unverified for this version.
-
-The host browser check passes, and host clipboard text matches Wine's clipboard when Spark has focus.
-With the image watcher, `Ctrl+V` pastes an image into a draft. Without the watcher, the image does not appear.
-DOCX, XLSX, and CSV attachments in a draft open in the host desktop applications.
-Without the fallback association, an XLSX click shows a Wine error and opens nothing.
-Its mail, calendar, received attachments, notification delivery, and both message copy actions still need separate checks.
-
-Bubblewrap contains filesystem writes but retains network and display access. It is not a security sandbox.
-If an existing Wine installation only starts with its original home and temporary directories, create an ignored
-`spark.local.env` containing `SPARK_CONTAINER=0`. The launcher also accepts `SPARK_APP` and `SPARK_PREFIX` there,
-so an existing installation can be adopted without copying its non-relocatable Wine prefix.
-Notifications depend on Spark’s database format, which future updates can change. File dialogs use Wine’s interface.
-The installer adds fallback Wine associations for unassociated DOC, DOCX, XLS, XLSX, PPT, PPTX, ODT, ODS, ODP,
-CSV, and TSV attachments, and for common PDF, text, image, archive, calendar, contact, and media types.
-These open through `winebrowser.exe` and the launcher's `xdg-open` wrapper, which starts the host `xdg-open`
-through the user service manager. Existing Windows handlers stay unchanged.
-For an existing installation, run `./bin/register-host-filetypes.sh` once. Spark can stay open.
-The launcher disables optional PowerShell hardware probes. A PowerShell installation in a reused Wine prefix can
-otherwise open many Wine debugger dialogs; Spark continues without that diagnostic hardware metadata.
+Spark 3.30.10 and 3.30.11 passed checks for login, inbox, calendar, mail delivery, attachments, and notifications.
+Separate checks confirm host links, clipboard text, image paste, and DOCX, XLSX, and CSV attachments in drafts.
 
 ## Spark CLI
 
 ![Spark CLI command list in a Linux terminal](docs/screenshots/spark-cli.png)
 
-Start Spark Desktop and enable account access under **Settings > AI Agents**.
+Start Spark Desktop. In **Settings > AI Agents**, permit access to the accounts you need.
 Then run:
 
 ```bash
@@ -116,10 +43,12 @@ Then run:
 ./bin/spark accounts
 ```
 
-CLI 1.4.0 passed checks for help, version, accounts, folders, and emails. Data commands returned live results with read-only access.
-Triage and send operations were not tested. They require a suitable plan and account permissions.
+The wrapper reuses the desktop's Wine environment. Spark Desktop must remain open.
 
-To put `spark` on your PATH, run these commands from the repository root:
+Read-only account, folder, and email commands passed checks on earlier versions.
+Triage and send operations remain unverified.
+
+To add `spark` to your PATH, run these commands from the repository root:
 
 ```bash
 mkdir -p ~/.local/bin
@@ -127,93 +56,65 @@ ln -s "$PWD/bin/spark" ~/.local/bin/spark
 ```
 
 Ensure `~/.local/bin` is on your PATH. The command refuses to replace an existing file.
-The wrapper uses the desktop’s Wine environment and skips the notification watcher.
 See [CLI maintenance](AGENTS.md#spark-cli) for agent skills and update checks.
 
 ## Omarchy plugin
 
-The optional plugin puts the unified inbox and calendar in the Omarchy bar.
+The optional plugin shows the unified inbox and calendar in the Omarchy bar.
 Click an email to open its thread. Click an event to open Spark's calendar.
 
-<img src="docs/screenshots/omarchy-plugin.png" alt="Spark Omarchy popup with a refresh icon beside Open Spark, sample emails, and calendar events" width="640">
+The mail icon shows pending emails. A calendar badge appears 15 minutes before an event.
 
-- Emails and events share a card layout, with a fixed header and a popup that grows to 80% of the screen height.
-- Event cards show the location or conference provider. Events without either hide the second line.
-- The mail icon uses the theme accent when emails remain in the inbox, including read emails.
-- A separate calendar badge appears 15 minutes before an event.
-
-The bar states are empty inbox, pending mail, an upcoming event, and both indicators together:
+<img src="docs/screenshots/omarchy-plugin.png" alt="Spark popup with sample emails and calendar events" width="640">
 
 <img src="docs/screenshots/omarchy-plugin-indicators.png" alt="Four bar states: empty inbox, pending mail, meeting soon, and both" width="600">
 
-The screenshots use sample data. They contain no mailbox or account details.
-
 The plugin requires Omarchy, Hyprland, and Spark Desktop with CLI read access.
-Run the optional installer from the repository root:
+Run the installer from the repository root:
 
 ```bash
 ./integrations/omarchy/install.sh
 ```
 
-See [the plugin guide](integrations/omarchy/README.md) for settings and checks.
-
-To regenerate the screenshots after a UI change, run:
-
-```bash
-python3 integrations/omarchy/preview/render.py
-```
-
-The command renders the real widget with a mock helper. It reads no Spark data.
+See [the plugin guide](integrations/omarchy/README.md) for settings, checks, and screenshots with sample data.
 
 ## Update
 
-Run the updater from the repository root:
+Use the repository updater. Spark's internal update button bypasses the compatibility patches and backups.
 
 ```bash
 ./update-spark.sh
 ```
 
-The command checks the official Windows feed and cross-checks the version against the release notes.
-If Spark is current, it exits without a restart.
-To check without changes, run `./update-spark.sh --check`. This command returns JSON.
-
-The updater downloads, extracts, builds the shims, and validates the new application before it stops Spark.
-It blocks new launcher calls during the update. The Omarchy plugin pauses its mailbox reads.
-After Spark stops, it backs up the prefix, home overlay, notification state, and previous application under `archive/`.
-It preserves the live prefix and Wine runtime, replaces the application, and restarts through the existing launcher.
-
-The updater requires the repository's `app/` and `prefix/` directories, a user systemd session, and Hyprland for window checks.
-It uses the existing Python dependency with no additional Python packages.
-It refuses automatic updates for adopted installations with custom application or prefix paths.
-
-The Omarchy popup always shows a small refresh icon beside **Open Spark**.
-Click it to check for updates and install the latest release through the same updater in a terminal.
+To check without changes, run `./update-spark.sh --check`.
+You can also click the refresh icon beside **Open Spark** in the Omarchy popup.
 If Spark is current, the updater exits without a restart.
-The plugin makes no background update checks.
 
-Validation covers the installed version, a visible window, Foundation's mapped DLL, and CLI help and version commands.
-The updater also attempts a read-only account query without changing CLI permissions or printing account data.
-Mail, calendar, attachment, and notification delivery checks remain separate.
-A failed startup check leaves the new application and logs available for inspection.
+The updater prepares and validates the new application before it stops Spark.
+It backs up the current installation under `archive/`, replaces the application, and restarts Spark.
+It preserves the Wine prefix and runtime.
 
-On November 1, 2026, the updater passed a live upgrade from 3.32.1.141358 to 3.32.2.141404 with the existing account state.
-Checks confirmed the runtime version, visible window, Foundation load, CLI 1.4.1, and read-only account access.
-The release check reported an update before the upgrade and no update afterward.
-A second invocation exited without a restart.
+Checks cover the version, visible window, SparkCore, CLI help, and CLI version.
+The updater also attempts a read-only account query. These checks do not verify mail or calendar operations.
 
-If replacement fails before launch, the updater restores the previous application and original Foundation DLL.
-Backups and update directories remain under `archive/`.
-After the startup and CLI checks pass, the updater keeps the newest backup and update directory and deletes older ones.
-To keep more of each, set `SPARK_KEEP_BACKUPS` in `spark.local.env`. The default is 1.
-If an update fails, the updater deletes nothing. It never restores older mailbox state automatically.
-The updater deletes only `pre-update-<version>-XXXXXX` and `update-<version>-XXXXXX` directories. Other files in `archive/` remain.
-See the [manual update and rollback procedure](AGENTS.md#update-spark) for recovery.
-Do not use Spark's internal update button. Its Windows installer bypasses the compatibility patches and backups.
+If startup fails, inspect the saved logs before recovery. The updater never restores older mailbox state automatically.
 
-## Work on this project
+After successful checks, the updater keeps the newest backup and the newest update directory.
+Set `SPARK_KEEP_BACKUPS` in `spark.local.env` to keep more.
+The updater requires the repository installation, a user systemd session, and Hyprland.
+For custom application or prefix paths, use [the manual update and rollback procedure](AGENTS.md#update-spark).
 
-Read [AGENTS.md](AGENTS.md) for the project map, work rules, and maintenance procedures.
-Both people and coding tools use this one set of instructions.
+## Limits
+
+- Bubblewrap contains filesystem writes but retains network and display access. It is not a security sandbox.
+- File dialogs use Wine's interface. Files copied from the host file manager can be inaccessible inside Bubblewrap.
+- Image paste requires the optional helper on Hyprland. See [the image paste notes](docs/investigation.md#image-paste).
+- Native notifications depend on Spark's database format. Spark updates can break them.
+
+## Development
+
+Read [AGENTS.md](AGENTS.md) for project rules and maintenance procedures.
+See [the investigation](docs/investigation.md) for Wine failures and compatibility fixes.
 
 Enable the commit guard:
 
@@ -221,11 +122,11 @@ Enable the commit guard:
 git config core.hooksPath .githooks
 ```
 
-Never commit app binaries, mailbox data, credentials, or logs.
-See [the investigation](docs/investigation.md) for the Wine failures and the reasons for each shim.
+Never commit application binaries, mailbox data, credentials, or logs.
 
 ## License
 
 The project scripts use the [MIT license](LICENSE).
-Spark belongs to Readdle. Download it from them and follow their terms.
+
+Spark belongs to Readdle. Download Spark from Readdle and follow their terms.
 This repository contains no Spark or Microsoft code.
