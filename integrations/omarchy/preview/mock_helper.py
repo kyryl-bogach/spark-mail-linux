@@ -1,4 +1,4 @@
-"""Provide sample data for UI screenshots. Never invoke Spark or schedule reminders."""
+"""Provide sample data for UI screenshots. Never invoke Spark."""
 from datetime import datetime, timedelta
 import json
 
@@ -19,5 +19,4 @@ events = [
 ]
 print(json.dumps({'status': 'Inbox', 'emails': emails, 'events': events,
                   'events_label': 'Tomorrow', 'events_status': '',
-                  'event_starts_ms': [int(tomorrow.timestamp() * 1000)],
-                  'reminders_ok': True, 'reminder_status': ''}))
+                  'event_starts_ms': [int(tomorrow.timestamp() * 1000)]}))

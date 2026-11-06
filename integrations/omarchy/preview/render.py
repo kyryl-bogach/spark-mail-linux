@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Capture the real widget and notification cards with a mock data source."""
+"""Capture the real widget with a mock data source."""
 import argparse
 import os
 from pathlib import Path
@@ -10,7 +10,7 @@ import tempfile
 
 ROOT = Path(__file__).resolve().parents[3]
 HERE = Path(__file__).resolve().parent
-IMAGES = ('omarchy-plugin.png', 'omarchy-plugin-indicators.png', 'omarchy-plugin-reminders.png')
+IMAGES = ('omarchy-plugin.png', 'omarchy-plugin-indicators.png')
 
 
 def main():
@@ -34,7 +34,6 @@ def main():
             (ui / source.name).write_text(text)
         else:
             (ui / source.name).symlink_to(source)
-    (stage / 'notifications').symlink_to(shell / 'plugins/notifications', target_is_directory=True)
     widget = (ROOT / 'integrations/omarchy/BarWidget.qml').read_text()
     widget = widget.replace('  manageIpc: false', '  manageIpc: false\n  property alias previewPopup: popup\n  property alias previewUpdateAction: updateAction', 1)
     plugin = stage / 'plugin'

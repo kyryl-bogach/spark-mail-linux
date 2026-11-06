@@ -3,7 +3,6 @@ import Quickshell
 import qs.Commons
 import qs.Commons as Commons
 import "plugin" as Plugin
-import "notifications/components" as Notifications
 
 ShellRoot {
   property int captures: 0
@@ -17,7 +16,7 @@ ShellRoot {
         return
       }
       captures++
-      if (captures === 3) Qt.quit()
+      if (captures === 2) Qt.quit()
     }, Qt.size(Math.round(item.width * 2), Math.round(item.height * 2)))
     if (!accepted) { console.log("CAPTURE_FAILED=" + name); Qt.quit() }
   }
@@ -43,12 +42,12 @@ ShellRoot {
   FloatingWindow {
     visible: true
     implicitWidth: Style.space(520)
-    implicitHeight: Style.space(440)
+    implicitHeight: Style.space(160)
     color: Commons.Color.background
     Item {
       anchors.centerIn: parent
       width: Style.space(480)
-      height: states.height + Style.space(28) + reminders.height
+      height: states.height
       Column {
         id: states
         width: parent.width
@@ -83,35 +82,6 @@ ShellRoot {
           }
         }
       }
-      Column {
-        id: reminders
-        anchors.top: states.bottom
-        anchors.topMargin: Style.space(28)
-        width: parent.width
-        spacing: Style.space(12)
-        Notifications.NotificationCard {
-          width: parent.width
-          app: "Spark Calendar"
-          glyph: "󰃭"
-          summary: "Meeting in 5 minutes"
-          body: "Event: Design review"
-          timestamp: Date.now()
-          urgency: 1
-          fontFamily: Style.font.family
-          cornerRadius: Style.cornerRadius
-        }
-        Notifications.NotificationCard {
-          width: parent.width
-          app: "Spark Calendar"
-          glyph: "󰃭"
-          summary: "Meeting in 1 minute"
-          body: "Event: Design review"
-          timestamp: Date.now()
-          urgency: 1
-          fontFamily: Style.font.family
-          cornerRadius: Style.cornerRadius
-        }
-      }
     }
   }
 
@@ -144,7 +114,6 @@ ShellRoot {
       }
       capture(popupWidget.previewPopup.previewCard, "omarchy-plugin.png")
       capture(states, "omarchy-plugin-indicators.png")
-      capture(reminders, "omarchy-plugin-reminders.png")
     }
   }
   Timer { interval: 10000; running: true; onTriggered: { console.log("CAPTURE_FAILED=timeout"); Qt.quit() } }

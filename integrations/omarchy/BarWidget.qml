@@ -19,9 +19,6 @@ Panel {
   property string eventsStatus: "Read the calendar..."
   property var eventStartsMs: []
   property double clockMs: Date.now()
-  property string reminderStatus: ""
-  property bool remindersOk: true
-  readonly property bool calendarRemindersEnabled: setting("calendarReminders", true) !== false
   readonly property bool hasPendingMail: emails.length > 0
   readonly property double nextMeetingMs: {
     var next = 0
@@ -36,7 +33,6 @@ Panel {
   readonly property string iconTooltip: {
     var text = hasPendingMail ? "Spark · Pending email in inbox" : "Spark · " + status
     if (meetingSoon) text += " · Meeting in " + Math.ceil((nextMeetingMs - clockMs) / 60000) + " min"
-    if (reminderStatus) text += " · " + reminderStatus
     return text
   }
   readonly property color contentForeground: Commons.Color.popups.text
@@ -44,7 +40,7 @@ Panel {
 
   function refresh() {
     if (fetch.running) return
-    fetch.command = ["python3", root.helper, "list", root.calendarRemindersEnabled ? "--reminders" : "--no-reminders"]
+    fetch.command = ["python3", root.helper, "list"]
     fetch.running = true
   }
   function runUpdate() {
@@ -91,16 +87,12 @@ Panel {
           root.eventsStatus = result.events_status || "Cannot read the Spark calendar"
           root.eventStartsMs = result.event_starts_ms || []
           root.clockMs = Date.now()
-          root.reminderStatus = result.reminder_status || ""
-          root.remindersOk = result.reminders_ok !== false
         } catch (error) {
           root.emails = []
           root.status = "Cannot read the Spark inbox"
           root.events = []
           root.eventsStatus = "Cannot read the Spark calendar"
           root.eventStartsMs = []
-          root.reminderStatus = "Calendar reminders are unavailable"
-          root.remindersOk = false
         }
       }
     }
@@ -427,16 +419,6 @@ Panel {
             width: parent.width
             label: "Calendar"
             detail: root.eventsLabel
-          }
-          Text {
-            visible: !root.remindersOk
-            width: parent.width
-            text: root.reminderStatus
-            textFormat: Text.PlainText
-            color: Commons.Color.urgent
-            font.pixelSize: Style.font.bodySmall
-            wrapMode: Text.Wrap
-            padding: Style.spacing.rowPaddingX
           }
           Text {
             visible: root.events.length === 0

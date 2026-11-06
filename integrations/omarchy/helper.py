@@ -11,7 +11,6 @@ import subprocess
 import sys
 import time
 from urllib.parse import urlsplit
-from reminders import Reminders
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -95,7 +94,7 @@ def event_location(row):
 
 
 def parse_events(output):
-    """Use one calendar model for the popup, indicator, and reminders."""
+    """Use one calendar model for the popup and indicator."""
     try:
         events = []
         for row in json_rows(output, 'events'):
@@ -167,7 +166,7 @@ def inbox():
 
 
 def read_calendar(now):
-    # Include the next day across the week boundary for overnight reminders.
+    # Include the next day across the week boundary for the calendar indicator.
     today = now.date()
     end = today + timedelta(days=max(7 - today.weekday(), 2))
     status, output = run_cli('events', '--start', now.strftime('%Y-%m-%dT%H:%M'), '--end', end.isoformat(), '--json')
@@ -196,43 +195,20 @@ def calendar_view(status, rows, today):
     return result
 
 
-def update_reminders(enabled, status, rows):
-    if enabled is None:
-        return {'ok': True, 'status': ''}
-    try:
-        if not enabled:
-            return {'ok': True, 'status': 'Calendar reminders disabled', 'cancelled': Reminders().clear()}
-        if status == 'closed':
-            return {'ok': True, 'status': 'Calendar reminders await Spark'}
-        if status != 'ok':
-            return {'ok': False, 'status': 'Cannot update calendar reminders. Check Spark CLI access.'}
-        return dict(Reminders().sync([row for row in rows if row['start_ms'] is not None]), ok=True, status='')
-    except (OSError, ValueError, KeyError, TypeError, subprocess.SubprocessError):
-        return {'ok': False, 'status': 'Calendar reminders are unavailable'}
-
-
-def overview(reminders_enabled=None, now=None):
+def overview(now=None):
     if update_busy():
         return {'status': 'Spark update in progress', 'emails': [], 'events': [],
                 'events_label': 'Today', 'events_status': 'Spark update in progress',
-                'event_starts_ms': [], 'reminders_ok': True, 'reminder_status': ''}
+                'event_starts_ms': []}
     now = (now or datetime.now()).astimezone()
     status, rows = read_calendar(now) if spark_running() else ('closed', [])
-    # Update timers before an inbox read that could time out.
-    reminders = update_reminders(reminders_enabled, status, rows)
     calendar = calendar_view(status, rows, now.date())
     mail = inbox()
     if status == 'closed':
         calendar['status'] = 'Spark is closed'
     return {'status': mail['status'], 'emails': mail['emails'],
             'events_label': calendar['label'], 'events_status': calendar['status'],
-            'events': calendar['events'], 'event_starts_ms': calendar['start_times'],
-            'reminders_ok': reminders['ok'], 'reminder_status': reminders['status']}
-
-
-def sync_reminders(now=None):
-    status, rows = read_calendar((now or datetime.now()).astimezone()) if spark_running() else ('closed', [])
-    return update_reminders(True, status, rows)
+            'events': calendar['events'], 'event_starts_ms': calendar['start_times']}
 
 
 def forward_desktop(*arguments):
@@ -332,24 +308,15 @@ if __name__ == '__main__':
             open_calendar()
         elif len(sys.argv) == 3 and sys.argv[1] == 'open-email':
             open_email(sys.argv[2])
-        elif sys.argv[1:] == ['reminders-sync']:
-            print(json.dumps(sync_reminders()))
-        elif sys.argv[1:] == ['reminders-clear']:
-            print(json.dumps({'ok': True, 'status': 'Calendar reminders disabled',
-                              'cancelled': Reminders().clear()}))
-        elif sys.argv[1:] in (['list'], ['list', '--reminders'], ['list', '--no-reminders']):
-            enabled = None if len(sys.argv) == 2 else sys.argv[2] == '--reminders'
-            print(json.dumps(overview(enabled)))
+        elif sys.argv[1:] == ['list']:
+            print(json.dumps(overview()))
         else:
-            sys.exit('usage: helper.py list [--reminders|--no-reminders]|open|open-calendar|open-email <id>|reminders-sync|reminders-clear|update')
+            sys.exit('usage: helper.py list|open|open-calendar|open-email <id>|update')
     except (OSError, ValueError, KeyError, TypeError, subprocess.SubprocessError):
         if sys.argv[1:2] == ['list']:
             print(json.dumps({'status': 'Cannot read the Spark inbox', 'emails': [],
                               'events_label': 'Today',
                               'events_status': 'Cannot read the Spark calendar', 'events': [],
-                              'event_starts_ms': [], 'reminders_ok': False,
-                              'reminder_status': 'Calendar reminders are unavailable'}))
-        elif sys.argv[1:] in (['reminders-sync'], ['reminders-clear']):
-            print(json.dumps({'ok': False, 'status': 'Calendar reminders are unavailable'}))
+                              'event_starts_ms': []}))
         else:
             sys.exit(1)

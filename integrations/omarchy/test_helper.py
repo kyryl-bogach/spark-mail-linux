@@ -8,7 +8,7 @@ import unittest
 from unittest import mock
 from helper import (
     calendar_view, focus_window, inbox, open_calendar, open_email, open_spark,
-    overview, parse_emails, parse_events, sync_reminders,
+    overview, parse_emails, parse_events,
 )
 
 
@@ -59,11 +59,11 @@ class CalendarTests(unittest.TestCase):
             with self.subTest(output=output), self.assertRaises(ValueError):
                 parse_events(output)
 
-    def test_declined_events_are_excluded_from_view_and_alerts(self):
+    def test_declined_events_are_excluded(self):
         rows = [dict(event(), attending_status='declined'), dict(event(), attending_status='no')]
         self.assertEqual(parse_events(calendar_output(*rows)), [])
 
-    def test_all_day_events_remain_visible_without_alert_times(self):
+    def test_all_day_events_remain_visible_without_indicator_times(self):
         result = self.view(dict(event(), all_day=True, start='2026-10-06'))
         self.assertEqual(result['events'], [{'title': 'Design review', 'time': 'All day', 'location': ''}])
         self.assertEqual(result['start_times'], [])
@@ -149,70 +149,41 @@ class InboxTests(unittest.TestCase):
 
 
 class SnapshotTests(unittest.TestCase):
-    @mock.patch('helper.Reminders')
+    @mock.patch('helper.subprocess.run')
     @mock.patch('helper.spark_running', return_value=True)
-    def test_popup_and_reminders_share_one_calendar_read(self, running, reminders):
-        reminders.return_value.sync.return_value = {'scheduled': 2, 'cancelled': 0}
+    def test_popup_reads_calendar_once_without_desktop_side_effects(self, running, run):
         with mock.patch('helper.run_cli', side_effect=[('ok', calendar_output(event())), ('ok', email_output())]) as cli:
-            result = overview(True, datetime(2026, 10, 11, 12))
+            result = overview(datetime(2026, 10, 11, 12))
         self.assertEqual(cli.call_count, 2)
         self.assertEqual(cli.call_args_list[0].args, ('events', '--start', '2026-10-11T12:00', '--end', '2026-10-13', '--json'))
         self.assertEqual(cli.call_args_list[1].args, ('emails', '--json'))
-        self.assertTrue(result['reminders_ok'])
         self.assertEqual(len(result['emails']), 1)
-        self.assertEqual(len(reminders.return_value.sync.call_args.args[0]), 1)
+        self.assertEqual(len(result['events']), 1)
+        self.assertEqual(len(result['event_starts_ms']), 1)
+        run.assert_not_called()
 
-    @mock.patch('helper.Reminders')
     @mock.patch('helper.spark_running', return_value=True)
-    def test_calendar_error_preserves_mail_and_queued_reminders(self, running, reminders):
+    def test_calendar_error_preserves_mail(self, running):
         with mock.patch('helper.run_cli', side_effect=[('ok', 'bad calendar'), ('ok', email_output())]):
-            result = overview(True, datetime(2026, 10, 6, 12))
+            result = overview(datetime(2026, 10, 6, 12))
         self.assertEqual(len(result['emails']), 1)
         self.assertEqual(result['events'], [])
-        self.assertFalse(result['reminders_ok'])
-        reminders.assert_not_called()
+        self.assertEqual(result['events_status'], 'Cannot read the Spark calendar')
 
-    @mock.patch('helper.Reminders')
     @mock.patch('helper.spark_running', return_value=True)
-    def test_inbox_error_preserves_the_calendar(self, running, reminders):
+    def test_inbox_error_preserves_the_calendar(self, running):
         with mock.patch('helper.run_cli', side_effect=[('ok', calendar_output(event())), ('ok', 'bad mail')]):
             result = overview(now=datetime(2026, 10, 6, 12))
         self.assertEqual(result['emails'], [])
         self.assertEqual(len(result['events']), 1)
-        reminders.assert_not_called()
 
-    @mock.patch('helper.Reminders')
     @mock.patch('helper.spark_running', return_value=False)
     @mock.patch('helper.run_cli')
-    def test_closed_spark_preserves_queued_reminders(self, cli, running, reminders):
-        result = overview(True)
+    def test_closed_spark_skips_cli_reads(self, cli, running):
+        result = overview()
         self.assertEqual(result['status'], 'Spark is closed')
-        self.assertTrue(result['reminders_ok'])
+        self.assertEqual(result['events_status'], 'Spark is closed')
         cli.assert_not_called()
-        reminders.assert_not_called()
-
-    @mock.patch('helper.Reminders')
-    @mock.patch('helper.spark_running', return_value=False)
-    def test_disabled_reminders_clear_the_owned_queue_even_when_spark_is_closed(self, running, reminders):
-        reminders.return_value.clear.return_value = 2
-        result = overview(False)
-        reminders.return_value.clear.assert_called_once()
-        reminders.return_value.sync.assert_not_called()
-        self.assertIn('disabled', result['reminder_status'])
-
-    @mock.patch('helper.Reminders')
-    @mock.patch('helper.spark_running', return_value=True)
-    def test_read_only_snapshot_never_updates_the_queue(self, running, reminders):
-        with mock.patch('helper.run_cli', side_effect=[('ok', calendar_output(event())), ('ok', email_output())]):
-            overview(now=datetime(2026, 10, 6, 12))
-        reminders.assert_not_called()
-
-    @mock.patch('helper.Reminders')
-    @mock.patch('helper.spark_running', return_value=True)
-    @mock.patch('helper.run_cli', return_value=('timeout', ''))
-    def test_manual_reminder_sync_preserves_the_queue_on_cli_failure(self, cli, running, reminders):
-        self.assertFalse(sync_reminders()['ok'])
-        reminders.assert_not_called()
 
 
 class OpenEmailTests(unittest.TestCase):
@@ -355,10 +326,10 @@ class UpdateTests(unittest.TestCase):
     @mock.patch('helper.update_busy', return_value=True)
     @mock.patch('helper.run_cli')
     def test_update_pauses_mailbox_reads(self, cli, busy):
-        result = overview(True)
+        result = overview()
         cli.assert_not_called()
         self.assertEqual(result['status'], 'Spark update in progress')
-        self.assertTrue(result['reminders_ok'])
+        self.assertEqual(result['events_status'], 'Spark update in progress')
 
     @mock.patch('helper.subprocess.run')
     def test_terminal_receives_script_as_argument(self, run):

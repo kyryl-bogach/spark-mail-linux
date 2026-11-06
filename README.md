@@ -6,7 +6,7 @@ Run [Spark Mail](https://sparkmailapp.com/) for Windows on Linux with Wine.
 Two small DLL shims prevent known crashes. Scripts handle launch, browser login, and native notifications.
 
 - **Unofficial.** Readdle does not support this project.
-- **Verified:** Spark 3.32.2.141404 starts on Arch Linux with Wine 11.16.
+- **Verified:** Spark 3.32.3.141489 starts on Arch Linux with Wine 11.16.
 - **CLI:** The bundled Windows CLI works through [bin/spark](bin/spark). Spark Desktop must remain open.
 - **Updates:** Run `./update-spark.sh`, or click the refresh icon beside **Open Spark** in the Omarchy popup.
 
@@ -80,6 +80,10 @@ Version 3.32.2.141404 passes desktop startup checks, loads SparkCore, and keeps 
 CLI 1.4.1 passes help, version, and read-only account checks against the existing account state.
 Mail, calendar, attachment, and notification delivery checks remain unverified for this version.
 
+Version 3.32.3.141489 runs with Wine 11.16 and loads SparkCore.
+The launch log confirms the installed version.
+Mail, calendar, attachment, and notification delivery checks remain unverified for this version.
+
 The host browser check passes, and host clipboard text matches Wine's clipboard when Spark has focus.
 With the image watcher, `Ctrl+V` pastes an image into a draft. Without the watcher, the image does not appear.
 DOCX, XLSX, and CSV attachments in a draft open in the host desktop applications.
@@ -137,15 +141,10 @@ Click an email to open its thread. Click an event to open Spark's calendar.
 - Event cards show the location or conference provider. Events without either hide the second line.
 - The mail icon uses the theme accent when emails remain in the inbox, including read emails.
 - A separate calendar badge appears 15 minutes before an event.
-- Native reminders fire five minutes and one minute before timed events. Calendar changes update or cancel the queued reminders.
 
 The bar states are empty inbox, pending mail, an upcoming event, and both indicators together:
 
 <img src="docs/screenshots/omarchy-plugin-indicators.png" alt="Four bar states: empty inbox, pending mail, meeting soon, and both" width="600">
-
-Calendar reminders use Omarchy's notification cards:
-
-<img src="docs/screenshots/omarchy-plugin-reminders.png" alt="Sample calendar reminders five minutes and one minute before a design review" width="600">
 
 The screenshots use sample data. They contain no mailbox or account details.
 
@@ -156,8 +155,7 @@ Run the optional installer from the repository root:
 ./integrations/omarchy/install.sh
 ```
 
-See [the plugin guide](integrations/omarchy/README.md) for reminders, settings, and checks.
-Keep Spark's calendar notifications enabled until a real meeting confirms the new reminders.
+See [the plugin guide](integrations/omarchy/README.md) for settings and checks.
 
 To regenerate the screenshots after a UI change, run:
 
@@ -165,7 +163,7 @@ To regenerate the screenshots after a UI change, run:
 python3 integrations/omarchy/preview/render.py
 ```
 
-The command renders the real widget with a mock helper. It reads no Spark data and schedules no reminders.
+The command renders the real widget with a mock helper. It reads no Spark data.
 
 ## Update
 

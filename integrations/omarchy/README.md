@@ -82,13 +82,12 @@ Spark's AI Agents settings instead of reporting an empty inbox.
 The events section reports an empty calendar when the query returns no events.
 
 The helper reuses `bin/spark`, its Wine settings, optional Bubblewrap mounts, and notification guard.
-Popup data stays in memory. Pending calendar reminders use private runtime files described below.
+Popup data stays in memory.
 
 The helper suppresses CLI diagnostics.
-One calendar read feeds the popup, bar indicator, and reminder scheduler.
+One calendar read feeds the popup and bar indicator.
 If a read fails, only the affected section clears.
 
-Queued reminders survive calendar read failures.
 The plugin requires CLI commands with JSON output and passes checks with CLI 1.4.0.
 
 The open action requires Hyprland.
@@ -106,44 +105,8 @@ The action opens a terminal through `xdg-terminal-exec`.
 The terminal shows progress and waits for Enter before it closes.
 If Spark is current, the updater exits without a restart.
 If a newer release exists, the updater backs up the stopped installation and restarts Spark through its existing launcher.
-The plugin pauses mailbox queries during an update and preserves queued calendar reminders.
+The plugin pauses mailbox queries during an update.
 See [the update guide](../../README.md#update) for requirements and recovery.
-
-## Calendar reminders
-
-The plugin creates Omarchy reminders five minutes and one minute before timed events.
-All-day events and declined events do not create reminders.
-Click a notification to open Spark's calendar.
-
-The scheduler checks the calendar every 60 seconds and when the popup opens.
-It schedules the next 24 hours with absolute systemd timers and one-second timer accuracy.
-The timers appear in Omarchy's reminder queue without a confirmation notification for each scheduled alert.
-
-Calendar changes update or cancel this installation's timers after the next successful refresh.
-Queued timers can fire when Spark closes or the bar restarts.
-Spark must run to discover new events and calendar changes.
-
-The scheduler skips alert times that have already passed.
-It suppresses notifications more than 30 seconds late, including missed alerts after sleep.
-Existing Spark notifications stay enabled during validation.
-
-Pending reminders store titles and timing data in private files under `XDG_RUNTIME_DIR`.
-The scheduler removes expired records on a successful refresh.
-It keeps no calendar data in the repository.
-
-Normal desktop notifications respect Omarchy's Do Not Disturb setting.
-Scheduler errors appear in the popup and its tooltip.
-
-To disable these reminders, set `calendarReminders` to `false` in this plugin's inline settings in `shell.json`.
-The next refresh clears only this installation's calendar reminders.
-
-Do not use `omarchy reminder clear` for this task. That command clears unrelated reminders too.
-
-To clear them after disabling the plugin, run:
-
-```bash
-python3 integrations/omarchy/helper.py reminders-clear
-```
 
 ## Checks
 
@@ -161,10 +124,6 @@ The updated event click still needs a direct check in the popup.
 
 The cold launch path remains unverified.
 Native layout checks use synthetic data to cover long lists, narrow popups, empty states, and the height limit.
-Reminder tests cover both alert times, duplicate prevention, calendar changes, expired alerts, and isolation from unrelated reminders.
-
-Live reminder checks confirm both alert times against a synthetic meeting through Omarchy's notification service.
-Verify a real meeting before disabling Spark's calendar notifications.
 
 ## UI screenshots
 
@@ -174,9 +133,9 @@ Run the screenshot fixture from the repository root:
 python3 integrations/omarchy/preview/render.py
 ```
 
-The fixture renders the current widget and Omarchy's notification cards with sample data.
-Its mock helper cannot invoke Spark, Wine, or the reminder scheduler.
-It writes the popup, bar states, and reminder images to `docs/screenshots/`.
+The fixture renders the current widget with sample data.
+Its mock helper cannot invoke Spark or Wine.
+It writes the popup and bar state images to `docs/screenshots/`.
 
 Use `--output /path/to/directory` to save previews elsewhere.
 The fixture keeps its temporary files and diagnostics under the ignored `archive/` directory.
