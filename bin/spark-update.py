@@ -78,8 +78,10 @@ def check(app):
     current = installed_version(app)
     latest = release(fetch(FEED))
     # The release page currently has a DMG typo. The Windows feed supplies the URL.
+    # Readdle can ship a rebuild without an update to the notes, so ignore the build number.
+    release_version = latest['version'].rsplit('.', 1)[0]
     notes = fetch(NOTES).decode('utf-8')
-    if not re.search(r'Version\s+' + re.escape(latest['version']) + r'\b', notes):
+    if not re.search(r'Version\s+' + re.escape(release_version) + r'(?!\d)', notes):
         raise ValueError('The release notes do not confirm the feed version')
     return dict(latest, installed=current,
                 available=version_key(latest['version']) > version_key(current))

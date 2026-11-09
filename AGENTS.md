@@ -101,6 +101,7 @@ Use `./update-spark.sh` for routine updates of the repository installation on Hy
 Use `./update-spark.sh --check` for a read-only JSON result.
 The Omarchy popup always exposes the updater through a refresh icon beside **Open Spark**.
 The script uses the official Windows appcast for the installer URL and cross-checks the version against the release notes.
+The cross-check ignores the build number, because Readdle can ship a rebuild without an update to the notes.
 The release notes can contain an incorrect DMG link. Never derive a Windows URL from that link.
 The appcast supplies the Windows installer URL directly.
 

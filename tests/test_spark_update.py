@@ -61,6 +61,17 @@ class MetadataTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 update.check(app)
 
+    @mock.patch.object(update, 'fetch')
+    def test_notes_confirm_release_without_build_number(self, fetch):
+        with tempfile.TemporaryDirectory() as app:
+            asar(app)
+            fetch.side_effect = [feed('3.32.3.141509'), b'Version 3.32.3.141489']
+            self.assertTrue(update.check(app)['available'])
+            for notes in (b'Version 3.32.30.141489', b'Version 3.32.2.141509'):
+                fetch.side_effect = [feed('3.32.3.141509'), notes]
+                with self.assertRaises(ValueError):
+                    update.check(app)
+
     @mock.patch.object(update.subprocess, 'check_output')
     def test_manifest_normalizes_windows_paths_and_rejects_escape(self, output):
         with tempfile.TemporaryDirectory() as app:

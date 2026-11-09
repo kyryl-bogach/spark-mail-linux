@@ -28,8 +28,9 @@ def update_busy():
 
 def open_update():
     # Pass the repository path as an argument, never as shell source.
+    # Close the terminal on success. Keep it open on failure so the error stays visible.
     subprocess.run(['xdg-terminal-exec', '--title=Spark update', '-e', 'bash', '-c',
-                    '"$1"; result=$?; printf "\nPress Enter to close.\n"; read -r; exit "$result"',
+                    '"$1" && exit; result=$?; printf "\nPress Enter to close.\n"; read -r; exit "$result"',
                     'spark-update', str(ROOT / 'update-spark.sh')], check=True)
 
 
