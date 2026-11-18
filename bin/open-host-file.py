@@ -11,6 +11,11 @@ transient service, which starts outside the container with the host defaults.
 The launcher exports SPARK_CONTAINER_HOME, SPARK_CONTAINER_TMP, and
 SPARK_DOWNLOADS_DIR so container paths map back to host paths.
 The explicit project, app, and prefix binds retain their host paths.
+
+xdg-open exits as soon as it has started the handler. ExitType=cgroup keeps
+the service until every process in it exits; otherwise systemd stops the
+service with xdg-open and kills a handler that does not move into its own
+unit, such as a native PDF viewer. Flatpak handlers move out and survived.
 """
 import os
 import subprocess
@@ -61,6 +66,7 @@ def host_path(path, environ):
 def open_file(path):
     subprocess.run(
         ['systemd-run', '--user', '--collect', '--quiet', '--service-type=exec',
+         '--property=ExitType=cgroup',
          '--expand-environment=no', '--property=StandardOutput=null',
          '--property=StandardError=null', '--description=Spark host open',
          '--', '/usr/bin/xdg-open', path],

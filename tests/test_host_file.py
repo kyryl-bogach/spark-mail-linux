@@ -111,6 +111,7 @@ class HostFileTests(unittest.TestCase):
         command = run.call_args.args[0]
         self.assertEqual(command[-1], path)
         self.assertIn('--expand-environment=no', command)
+        self.assertIn('--property=ExitType=cgroup', command)
         self.assertIn('--property=StandardOutput=null', command)
         self.assertIn('--property=StandardError=null', command)
         self.assertEqual(run.call_args.kwargs['timeout'], 10)
@@ -141,6 +142,7 @@ class HostFileTests(unittest.TestCase):
                 expected = '/srv/spark/tmp' + expected[len('/tmp'):]
             self.assertEqual(calls.read_text().splitlines(),
                              ['--user', '--collect', '--quiet', '--service-type=exec',
+                              '--property=ExitType=cgroup',
                               '--expand-environment=no', '--property=StandardOutput=null',
                               '--property=StandardError=null', '--description=Spark host open',
                               '--', '/usr/bin/xdg-open', expected])
