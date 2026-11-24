@@ -242,3 +242,116 @@ Adopted installations with custom application or prefix paths still require the 
 See [the update guide](README.md#update) for validation limits and requirements.
 Follow [AGENTS.md](AGENTS.md#update-spark) for manual updates and rollback.
 Do not use Spark's update button or run the Windows installer directly.
+
+## 9. ARM hosts (Apple silicon, Asahi Linux)
+
+Spark is an x86_64 Windows application. On an aarch64 host it runs as
+muvm (a microVM with 4K pages) → FEX-Emu → Wine → Spark. `run-spark.sh`,
+`install.sh` and the Bubblewrap container do not apply there. Use the
+`spark-arm` launcher in `launcher/` instead.
+
+This was set up once, on a MacBook Air M1 with Omarchy on Asahi Linux, with
+Spark 3.32.3.141489 and Wine 11.4. Treat it as experimental.
+
+### Packages
+
+Arch Linux ARM names: `muvm`, `FEX-Emu`, `fex-emu-rootfs-arch`,
+`mesa-fex-emu-overlay-x86_64`, `erofs-utils`, `libarchive` (`bsdtar`), `clang`,
+and a Rust toolchain (`rustup`). Ask the user before you install any of them.
+
+### Extract Wine out of the FEX rootfs
+
+The FEX rootfs image ships an x86_64 Wine. Wine started from inside the image
+cannot open its own fonts. DirectWrite then fails on Tahoma and Spark never
+shows a window. Copy Wine into `runtime/`, which is ignored by Git:
+
+```bash
+img=/usr/share/fex-emu/RootFS/default.erofs
+mkdir -p runtime/usr/lib runtime/usr/share
+fsck.erofs --extract=runtime/usr/lib/wine --path=/usr/lib/wine --no-preserve "$img"
+fsck.erofs --extract=runtime/usr/bin --path=/usr/bin --no-preserve "$img"
+fsck.erofs --extract=runtime/usr/share/wine --path=/usr/share/wine --no-preserve "$img"
+```
+
+`runtime/usr/bin/wine` must exist afterwards. The launcher refuses to start
+without it.
+
+### Extract and patch Spark
+
+Follow the manual steps in [AGENTS.md](AGENTS.md#2-prepare-an-isolated-copy):
+extract the installer with `bsdtar`, compare the manifest, build the shims and
+run both patch scripts. Two differences on ARM:
+
+- `shims/build.sh` needs an x86_64 Windows linker. If the host has no `lld`,
+  link with the `rust-lld` that ships in the Rust toolchain
+  (`…/rustlib/aarch64-unknown-linux-gnu/bin/gcc-ld/ld.lld`). It needs a
+  `DllMainCRTStartup` entry symbol in each shim.
+- Create the Wine prefix by the first launch. Do not copy one from an x86_64
+  machine.
+
+### Build and register the launcher
+
+```bash
+cargo build --release --locked --manifest-path launcher/Cargo.toml
+mkdir -p .build
+cp launcher/target/release/spark-arm .build/spark-arm
+.build/spark-arm --root "$PWD" --install-desktop
+```
+
+`--install-desktop` writes the same two desktop entries as
+`install-handler.sh`, pointed at `spark-arm`, and registers Spark's URL
+schemes and `mailto`. Rerun it when the binary or the repository moves.
+
+### What the launcher does
+
+- **Start:** `muvm -m` with the bundled Wine. Output goes to `tmp/launch.log`.
+  The window appears one to two minutes after the start.
+- **Safe defaults:** `--disable-gpu`, because the GPU process crashes on most
+  starts, and `--js-flags=--jitless`, because V8's JIT-compiled code crashes
+  Spark under FEX within minutes. `--gpu` and `--jit` turn them back on.
+- **Retry:** many starts die within seconds (`GPU process isn't usable`,
+  `Network service crashed`) and a few hang. The launcher waits for
+  `Application bootstrap is completed` in the log. A start that dies first, or
+  is not ready after `--ready-timeout` seconds (default 300), is stopped and
+  started again after 10 seconds, three starts at most.
+- **Second launch and callbacks:** on x86_64 a second `Spark Desktop.exe`
+  hands its arguments to the first and exits. Under FEX the first instance
+  dies when that second process starts. So `spark-arm` starts Spark with
+  `--inspect=127.0.0.1:9229` and, when the VM is already up, runs itself
+  inside the VM as a native helper. The helper connects to that inspector and
+  raises Spark's own `second-instance` event with the URL. No second VM and no
+  second Spark process start. The URL travels in an owner-only file under
+  `tmp/deliveries/`, never on a command line. A link that arrives while
+  Spark is still starting waits until Spark listens.
+- **Links out of Spark:** Wine calls `xdg-open` inside the VM. The launcher
+  puts its own `xdg-open` first on `PATH`. It queues the link in
+  `tmp/open-requests/`, and the launcher on the host opens it and deletes the
+  file. Never let the system `xdg-open` run inside the VM: it starts a second
+  browser on the user's real profile, and the callback cannot return.
+- **Stop:** `.build/spark-arm --root "$PWD" --stop`.
+- **Logs:** `tmp/launch.log` (Spark and Wine), `tmp/muvm.log` (muvm itself)
+  and `tmp/spark-arm.log` (the launcher; it records schemes, never URLs).
+
+The inspector port listens on the loopback interface inside the VM only.
+Any process inside that VM can control Spark through it, so run nothing else
+in the VM. Change the port with `--inspect-port`.
+
+Settings: `spark-arm --help`. `--mem` (or `SPARK_VM_MEM`) caps the VM's
+memory in MiB. `--guest-env KEY=VALUE` and `--spark-arg ARG` pass extra
+settings to FEX and to Spark for experiments.
+
+### Limits on ARM
+
+- Rendering is in software and JavaScript runs in V8's interpreter, so Spark
+  is slower than on x86_64.
+- Startup takes minutes when starts have to be retried, and the VM needs
+  several GB of memory.
+- There is no Bubblewrap container. Wine sees the real home directory.
+- muvm runs one VM per user. The launcher refuses to start while another
+  muvm VM is running, for example one started for Steam.
+- With the VM capped at 6000 MiB, Spark used almost all of it while idle on
+  the welcome screen. Plan for about 6 GB of host memory.
+- The notification watcher, tray closer, clipboard image bridge, window
+  rescue, `bin/spark` and `update-spark.sh` are untested under muvm and are
+  not started by `spark-arm`.
+- After a Spark update, rebuild the shims and patch `Foundation.dll` by hand.

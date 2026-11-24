@@ -441,3 +441,61 @@ The Omarchy action opens the same command in a terminal.
 The screenshot fixture covers the update icon with sample data and no mailbox access.
 The fixture requires an explicit `Commons.Color` import because an unqualified QML color name resolves incorrectly on this system.
 Mail, calendar, attachment, and notification delivery checks remain separate.
+
+## ARM host: muvm, FEX-Emu and Wine (November 24, 2026)
+
+Spark 3.32.3.141489 was brought up on an Apple M1 running Asahi Linux
+(16K pages) as muvm 0.7.0 → FEX-Emu 2604 → Wine 11.4. Each finding below
+names its evidence. Section 9 of `INSTALLATION.md` has the resulting setup.
+
+**No window: Wine could not open its own fonts.** With Wine run from inside
+the FEX rootfs image, DirectWrite failed on Tahoma and Chromium looped inside
+`new BrowserWindow`. Wine extracted from the image into `runtime/` showed the
+window. Copying fonts into `C:\windows\Fonts` did not help.
+
+**GPU process.** It exits on most starts (`-36862`, `34`, `0x80000003`).
+`--disable-gpu` works.
+
+**Failed starts.** Three kinds were seen in about fifteen starts: death in the
+first 15 to 40 seconds with `GPU process isn't usable` or
+`Network service crashed`; death with only Crashpad's `not connected`; and
+one hang after `Cannot find module 'electron-clipboard-ex'` with the main
+process idle. A retry after 10 seconds usually works.
+
+**V8 crashes with the JIT on.** Three Crashpad dumps from three sessions were
+parsed locally (exception record, module list, stack scan):
+
+| Session | Fault | Location |
+| --- | --- | --- |
+| SparkCore process, 17 s after the sign-in page opened | breakpoint `0x80000003` | `Spark Desktop.exe+0x2da0376`, an `int3` between two V8 builtins |
+| Main process, as a second Spark process started | access violation `0xc0000005` | JIT-compiled code outside every module, with `rip` in the middle of an instruction |
+| Main process, 10 s after bootstrap | breakpoint `0x80000003` | `Spark Desktop.exe+0x22ef813`, an `int3; ud2` fatal check called from V8 |
+
+None of the stacks contains `Foundation.dll`, the shims or `SmartMailCore`.
+Three different faults inside V8 point at the emulation of JIT-compiled code,
+not at one Spark bug. That is an inference, not a proven cause. With
+`--js-flags=--jitless` no dump has been written since, in four sessions of
+up to 11 minutes. `FEX_SMCCHECKS=2` made every start
+die within 40 seconds and was dropped.
+
+**A second Spark process kills the first.** `run-spark.sh` forwards OAuth
+callbacks by running `Spark Desktop.exe --win-open-url URL` again. Under FEX
+the first instance disappeared within 4 to 25 seconds of that second process
+starting, four times out of five, with and without the JIT. A process sample
+taken every 4 seconds inside the VM showed the first main process gone 4 to 8
+seconds after the second one appeared. Spark's own log shows the first
+instance did receive the event (`Handling second instance event`) before it
+died. The cause was not found. Spark quits through `app.quit()` and does not
+kill processes by name.
+
+The launcher avoids the second process. Spark's first instance reads
+forwarded arguments from a `--second-instance=<argv as JSON>` switch in the
+`second-instance` event. `spark-arm` starts Spark with `--inspect` on the
+VM's loopback and emits that event through the inspector
+(`Runtime.evaluate`). Spark logged `Handling open URL event` with action
+`mailto` for a test link and kept running.
+
+**The system `xdg-open` must not run inside the VM.** The VM shares the host
+filesystem and `/tmp`. The system `xdg-open` started a second browser inside
+the VM on the host user's real profile, and that browser took the profile's
+singleton lock from the running host browser.

@@ -110,6 +110,7 @@ For custom application or prefix paths, use [the manual update and rollback proc
 - File dialogs use Wine's interface. Files copied from the host file manager can be inaccessible inside Bubblewrap.
 - Image paste requires the optional helper on Hyprland. See [the image paste notes](docs/investigation.md#image-paste).
 - Native notifications depend on Spark's database format. Spark updates can break them.
+- ARM hosts (Apple silicon with Asahi Linux) are experimental and use a separate launcher. See [the ARM section](INSTALLATION.md#9-arm-hosts-apple-silicon-asahi-linux).
 
 ## Development
 

@@ -36,6 +36,7 @@ Docker does not replace the host display, Wine prefix, or desktop integration in
 | `share/` | Contains desktop integration templates. |
 | `tests/` | Covers desktop registration, OAuth validation, notification polling, the image watcher, the launcher, and the portal helpers. |
 | `docs/investigation.md` | Records the Wine failures and the evidence for each workaround. |
+| `launcher/` | Rust launcher `spark-arm` for aarch64 hosts: runs Spark through muvm, FEX-Emu and Wine. See `INSTALLATION.md` section 9. |
 | `.githooks/pre-commit` | Blocks runtime state, proprietary binaries, and large files from commits. |
 
 `sprkenv.dll` handles the profile-directory API that causes an unchecked length underflow in Foundation.
